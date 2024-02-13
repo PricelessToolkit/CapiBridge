@@ -1,5 +1,7 @@
 /* Json Structur
  *  
+ *  Example of received data {\"k\":\"abc\",\"id\":\"node2\",\"r\":\"115\",\"b\":\"3.2\",\"rw\":\"smile\"}
+ *  
  k   - Network Key
  id  - Node Name
  r   - RSSI
