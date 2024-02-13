@@ -40,6 +40,18 @@ ____________
 > [!IMPORTANT]
 > If you're new to Arduino-related matters, please refrain from asking basic questions like "how to install Arduino IDE". There are already plenty of excellent tutorials available on the internet. If you encounter any issues, remember that providing detailed information about the problem will help me offer more effective assistance. More information equals better help!
 
+## Schematic
+<details>
+  <summary>View schematic. Click here</summary>
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/schematic.jpg"/>
+</details>
 
+____________
+
+## CapiBridge sketch configuration
+
+> [!NOTE]
+> For `ESP1.ino`
+> all configurations are done in the file `config.h`
 
 ## Work in progress...
