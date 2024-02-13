@@ -9,6 +9,7 @@
  v   - Voltage
  a   - Amps
  l   - Lux
+ m   - Motion
  w   - Weight
  s   - State (on | off)
  e   - Encoder
