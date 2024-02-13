@@ -11,7 +11,9 @@ CapiBridge acts as a bridge between different communication technologies LoRa, E
 JSON String example
 `{\"k\":\"key\",\"id\":\"node_name\",\"b\":\"3.2v\",\"rw\":\"row_string\"}`
 
+### _Contributors_
 
-
+> [!NOTE]
+>  If you're ready to contribute to the project, your support would be greatly appreciated. Due to time constraints, I may not be able to quickly verify new "features" or completely new "code" functionality, so please create a new code/script in the new folder.
 
 ## Work in progress...
