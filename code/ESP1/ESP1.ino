@@ -58,6 +58,7 @@ struct json_msg {
   float v;
   float a;
   int16_t l;
+  String m;
   float w;
   String s;
   int16_t e;
@@ -211,6 +212,7 @@ void updateMessagesAndPublish(const JsonDocument& doc) {
   publishIfKeyExists(doc, "v", "/volt");
   publishIfKeyExists(doc, "a", "/amp");
   publishIfKeyExists(doc, "l", "/lux");
+  publishIfKeyExists(doc, "m", "/motion");
   publishIfKeyExists(doc, "w", "/weight");
   publishIfKeyExists(doc, "s", "/state");
   publishIfKeyExists(doc, "t", "/tmp");
