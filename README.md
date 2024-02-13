@@ -48,7 +48,7 @@ ____________
 ## Schematic
 <details>
   <summary>View schematic. Click here</summary>
-<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/schematic.jpg"/>
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/capibridge_schematic.jpg"/>
 </details>
 
 ____________
