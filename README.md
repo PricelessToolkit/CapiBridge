@@ -59,10 +59,7 @@ ____________
 
 ### Used Arduino Libraries
 ```c
-#include <Arduino.h>
-#include <SPI.h>
 #include <LoRa.h>
-#include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 ```
