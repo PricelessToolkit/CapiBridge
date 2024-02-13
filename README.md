@@ -81,6 +81,9 @@ ____________
 ```
 ### LoRa Configuration
 
+> [!IMPORTANT]
+> LoRa configuration must match the configuration in Nodes/Sensors.
+
 ```c
 #define SIGNAL_BANDWITH 125E3  // signal bandwidth in Hz, defaults to 125E3
 #define SPREADING_FACTOR 8    // ranges from 6-12, default 7 see API docs
