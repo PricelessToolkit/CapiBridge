@@ -67,7 +67,7 @@ ____________
 #include <ArduinoJson.h>
 ```
 
-CapiBridge is based on ESP32-C3 so If you are using ESP32 for the first time, you need To install the ESP32 board and all libraries, in your Arduino IDE. See `Used Arduino Libraries`.
+CapiBridge is based on ESP32-C3 so If you are using ESP32 for the first time, you need To install the ESP32 board and all libraries, in your Arduino IDE.
 - In your Arduino IDE, go to File> Preferences.
 - Enter `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json` into the “Additional Boards Manager URLs” field. Then, click the “OK” button
 - Open the Boards Manager. Go to Tools > Board > Boards Manager and Search for ESP32 and press the install button for the “esp32 by Expressif Systems“
