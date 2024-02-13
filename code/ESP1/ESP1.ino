@@ -2,7 +2,7 @@
  *  
  *  Example of received data from LoRa directly or from Second ESP "Serial1" {\"k\":\"abc\",\"id\":\"node2\",\"r\":\"115\",\"b\":\"3.2\",\"rw\":\"smile\"}
  *  
- k   - Network Key
+ k   - Gateway Key
  id  - Node Name
  r   - RSSI
  b   - Battery Voltage
@@ -200,13 +200,13 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
 }
 
 void updateMessagesAndPublish(const JsonDocument& doc) {
-  // Only proceed if NETWORK_KEY matches
-  if (!doc.containsKey("k") || doc["k"].as<String>() != NETWORK_KEY) {
+  // Only proceed if GATEWAY_KEY matches
+  if (!doc.containsKey("k") || doc["k"].as<String>() != GATEWAY_KEY) {
     Serial.println("Network Key Not Found or Invalid in JSON");
     return;
   }
 
-  // Assuming NETWORK_KEY matched and "id" is always required
+  // Assuming GATEWAY_KEY matched and "id" is always required
   received_json_message.id = doc.containsKey("id") ? doc["id"].as<String>() : "";
 
   // Example usage for different keys
