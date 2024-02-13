@@ -1,28 +1,3 @@
-/* Json Structur
- *  
- k   - Network Key
- id  - Node Name
- r   - RSSI
- b   - Battery Voltage
- v   - Voltage
- a   - Amps
- l   - Lux
- m   - motion
- w   - Weight
- s   - State (on | off)
- e   - Encoder
- t   - Temperature
- t2  - Second Temperature
- ah  - Air Humidity
- sh  - Soile Humidity
- rw  - Row Data
- p1  - Push Button State (on | off)
- p2  - Push Button State (on | off)
- p3  - Push Button State (on | off)
- p4  - Push Button State (on | off)
-
- */
-
 #include <Arduino.h>
 
 #define LED_PIN 2
