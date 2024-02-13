@@ -8,11 +8,11 @@
 ///////////////////////////////// CHANGE THIS /////////////////////////////////
 
 #define SIGNAL_BANDWITH 125E3
-#define SPREADING_FACTOR 12
+#define SPREADING_FACTOR 8
 #define TRANSMIT_BATTERY_VOLTAGE 1
 #define CODING_RATE 5
 #define SYNC_WORD 0xF3
-#define PREAMBLE_LENGTH 8
+#define PREAMBLE_LENGTH 6
 #define TX_POWER 20
 #define BAND 433E6  // 433E6 / 868E6 / 915E6
 #define NODE_NAME "mbox"
@@ -50,9 +50,9 @@ void loop() {
 #if TRANSMIT_BATTERY_VOLTAGE
     float volts = analogReadEnh(PIN_PB4, 12) * (1.1 / 4096) * (30 + 10) / 10;
     //Serial.println(volts);
-    LoRa.print("{\"k\":\"abc\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + volts + "}");   
+    LoRa.print("{\"k\":\"ab\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + volts + "}");   
 #else
-    LoRa.print("{\"k\":\"abc\",\"id\":\"" + String(NODE_NAME) + "\"}");
+    LoRa.print("{\"k\":\"ab\",\"id\":\"" + String(NODE_NAME) + "\"}");
 #endif
     LoRa.endPacket();
     delay(10);

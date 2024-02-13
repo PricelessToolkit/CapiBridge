@@ -119,13 +119,6 @@ void reconnect() {
       Serial.println("Buffersize: " + client.getBufferSize());
 
 
-//////////// Example /////////////////
-//    client.publish(
-//      (String(BINARY_SENSOR_TOPIC)+ String(received_json_message.id).c_str() + String("/config")).c_str(),
-//      (String("{\"name\":null,\"device_class\":\"door\",\"icon\":\"mdi:mailbox\",\"state_topic\":\"") + String(BINARY_SENSOR_TOPIC)+ String(received_json_message.id).c_str() + String("\",\"unique_id\":\"")+ String(received_json_message.id).c_str() + String("\",\"device\":{\"identifiers\":\"")+ String(received_json_message.id).c_str() + String("\",\"name\":\"") + String(received_json_message.id).c_str() + String("\",\"mdl\":\"")+ String(received_json_message.id).c_str() + String("\",\"mf\":\"PricelessToolkit\"}}")).c_str(),
-//      MQTT_RETAIN);
-//////////////////////////////////////
-
         
     } else {
       Serial.print("MQTT failed, rc=");
@@ -228,6 +221,54 @@ void updateMessagesAndPublish(const JsonDocument& doc) {
   publishIfKeyExists(doc, "p3", "/button3");
   publishIfKeyExists(doc, "p4", "/button4");
   // Add other keys as needed...
+
+ ///////////////////////// auto-discovery ////////////////////////////////
+
+/* Json Structur
+
+ id  - Node Name - received_json_message.id
+ r   - RSSI - received_json_message.r
+ b   - Battery Voltage - received_json_message.b
+ v   - Voltage
+ a   - Amps
+ l   - Lux
+ m   - Motion (on | off)
+ w   - Weight
+ s   - State (on | off)
+ e   - Encoder
+ t   - Temperature
+ t2  - Second Temperature
+ ah  - Air Humidity
+ sh  - Soile Humidity
+ rw  - Row Data
+ p1  - Push Button State (on | off)
+ p2  - Push Button State (on | off)
+ p3  - Push Button State (on | off)
+ p4  - Push Button State (on | off)
+
+ */
+
+  // auto-discovery node "device" confige example, one for every device, changing dinamicaly
+    client.publish(
+      (String(BINARY_SENSOR_TOPIC)+ String(received_json_message.id).c_str() + String("/config")).c_str(),
+      (String("{\"name\":null,\"device_class\":\"door\",\"icon\":\"mdi:mailbox\",\"state_topic\":\"") + String(SENSOR_TOPIC)+ String(received_json_message.id).c_str() + String("\",\"unique_id\":\"")+ String(received_json_message.id).c_str() + String("\",\"device\":{\"identifiers\":\"")+ String(received_json_message.id).c_str() + String("\",\"name\":\"") + String(received_json_message.id).c_str() + String("\",\"mdl\":\"")+ String(received_json_message.id).c_str() + String("\",\"mf\":\"PricelessToolkit\"}}")).c_str(),
+      MQTT_RETAIN);
+
+ // auto-discovery for "b" Battery changing dinamicaly String(SENSOR_TOPIC)+ String(received_json_message.id).c_str() + String("/batt")).c_str()
+   if (doc.containsKey("b")) {
+    //...
+  }
+
+   // auto-discovery for "r" RSSI changing dinamicaly String(SENSOR_TOPIC)+ String(received_json_message.id).c_str() + String("/rssi")).c_str()
+   if (doc.containsKey("r")) {
+    //...
+  }
+
+  //...
+
+ /////////////////////////////////////////////////////////////////////////////
+
+
 }
 
 void parseIncomingPacket(String serialrow) {

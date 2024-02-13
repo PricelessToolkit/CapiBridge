@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <esp_now.h>
 #include <WiFi.h>
+#include <esp_wifi.h> // only for esp_wifi_set_channel()
 
 #define LED_PIN 2
 #define BAUD 115200
@@ -59,9 +60,9 @@ void loop() {
   
   // Test JSON strings imitating received ESPNOW data
   /*
-  Serial1.println("{\"k\":\"abc\",\"id\":\"node1\",\"r\":\"85\",\"b\":\"4.15\",\"v\":\"12\",\"a\":\"0.5\",\"l\":\"224\",\"m\":\"on\",\"w\":\"1.45\",\"s\":\"on\",\"e\":\"1024\",\"t\":\"31\",\"t2\":\"25\",\"ah\":\"56\",\"sh\":\"19\",\"rw\":\"Test Test\",\"p1\":\"on\",\"p2\":\"off\",\"p3\":\"on\",\"p4\":\"off\"}");
+  Serial1.println("{\"k\":\"ab\",\"id\":\"node1\",\"r\":\"85\",\"b\":\"4.15\",\"v\":\"12\",\"a\":\"0.5\",\"l\":\"224\",\"m\":\"on\",\"w\":\"1.45\",\"s\":\"on\",\"e\":\"1024\",\"t\":\"31\",\"t2\":\"25\",\"ah\":\"56\",\"sh\":\"19\",\"rw\":\"Test Test\",\"p1\":\"on\",\"p2\":\"off\",\"p3\":\"on\",\"p4\":\"off\"}");
   delay(2000);
-  Serial1.println("{\"k\":\"abc\",\"id\":\"node2\",\"r\":\"115\",\"b\":\"3.2\",\"rw\":\"smile\"}");
+  Serial1.println("{\"k\":\"ab\",\"id\":\"node2\",\"r\":\"115\",\"b\":\"3.2\",\"rw\":\"smile\"}");
   delay(2000);
   */
 
