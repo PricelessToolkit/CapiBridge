@@ -16,4 +16,30 @@ JSON String example
 > [!NOTE]
 >  If you're ready to contribute to the project, your support would be greatly appreciated. Due to time constraints, I may not be able to quickly verify new "features" or completely new "code" functionality, so please create a new code/script in the new folder.
 
+____________
+
+## Specifications
+- Based on 2x ESP32-C3 and LoRa Module
+- ESP1 Free GPIOs
+  - IO7, IO10
+- ESP2 Free GPIOs
+  - IO10, IO3, IO1, IO0, IO4, IO5, IO6, IO7
+- Power Pins 5V, 3.3V, GND
+- USB-C with auto reset "for programming"
+- UART switch for selecting ESP1|ESP2
+- Buttons for flashing and reset
+
+____________
+
+
+## Before you start
+
+> [!NOTE]
+> I hope that everything is crystal clear as I've made every effort to provide a step-by-step explanation of the setup process. If you have any further questions regarding the setup or require assistance with assembling a printed circuit board, feel free to join our [Facebook Group](https://www.facebook.com/groups/pricelesstoolkit) or open a new [discussion](https://github.com/PricelessToolkit/CapiBridge/discussions) topic in the dedicated tab.
+
+> [!IMPORTANT]
+> If you're new to Arduino-related matters, please refrain from asking basic questions like "how to install Arduino IDE". There are already plenty of excellent tutorials available on the internet. If you encounter any issues, remember that providing detailed information about the problem will help me offer more effective assistance. More information equals better help!
+
+
+
 ## Work in progress...
