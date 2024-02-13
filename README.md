@@ -59,10 +59,48 @@ ____________
 
 ____________
 
-## CapiBridge sketch configuration
+## CapiBridge configuration
 
 > [!NOTE]
 > For `ESP1.ino`
 > all configurations are done in the file `config.h`
+
+
+### Gateway Key
+
+> [!IMPORTANT]
+> Unique key within the JSON to differentiate your signal from others. Must match the key in Nodes/Sensors.
+
+```c
+#define GATEWAY_KEY "ab"
+```
+
+
+
+### WIFI and MQTT Server Configuration
+```c
+#define WIFI_SSID "your_wifi_ssid"
+#define WIFI_PASSWORD "your_wifi_passwd"
+#define MQTT_USERNAME "your_mqtt_user"
+#define MQTT_PASSWORD "your_mqtt_passwd"
+#define MQTT_SERVER "your_mqtt_broker_address"
+#define MQTT_PORT 1883
+```
+### LoRa Configuration
+
+```c
+#define SIGNAL_BANDWITH 125E3  // signal bandwidth in Hz, defaults to 125E3
+#define SPREADING_FACTOR 8    // ranges from 6-12, default 7 see API docs
+#define CODING_RATE 5          // Supported values are between 5 and 8
+#define SYNC_WORD 0xF3         // byte value to use as the sync word, defaults to 0x12
+#define PREAMBLE_LENGTH 6      // Supported values are between 6 and 65535.
+#define TX_POWER 20            // TX power in dB, defaults to 17, Supported values are 2 to 20
+#define BAND 433E6             // 433E6 / 868E6 / 915E6 - Depends on what board you bought.
+```
+
+> [!IMPORTANT]
+> For optimizing the `SPREADING_FACTOR` (SF) in your network, it's crucial not to default to SF12 aiming for maximum distance without considering its downsides. SF12, while extending range, significantly slows down data transmission. For example, if your furthest sensor is only 100 meters away, opting for SF7 is more efficient. SF7 is faster, taking only 0.027 seconds to transmit "6 bytes", thus consuming less power compared to SF12, which would take 0.75 seconds for the same task. Therefore, it's essential to choose the SF wisely based on your specific needs and understand the trade-offs. Avoid setting SF12 by default without assessing the impact on speed, power consumption, and time on air (ToA) for others.
+
+____________
 
 ## Work in progress...
