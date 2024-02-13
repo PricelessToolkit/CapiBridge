@@ -52,7 +52,7 @@ ____________
 
 ____________
 
-## CapiBridge configuration
+## CapiBridge ESP1 configuration
 
 > [!NOTE]
 > For `ESP1.ino`
@@ -98,5 +98,10 @@ ____________
 > For optimizing the `SPREADING_FACTOR` (SF) in your network, it's crucial not to default to SF12 aiming for maximum distance without considering its downsides. SF12, while extending range, significantly slows down data transmission. For example, if your furthest sensor is only 100 meters away, opting for SF7 is more efficient. SF7 is faster, taking only 0.027 seconds to transmit "6 bytes", thus consuming less power compared to SF12, which would take 0.75 seconds for the same task. Therefore, it's essential to choose the SF wisely based on your specific needs and understand the trade-offs. Avoid setting SF12 by default without assessing the impact on speed, power consumption, and time on air (ToA) for others.
 
 ____________
+
+## CapiBridge ESP2 configuration
+> [!NOTE]
+> ESP2 for `ESPNOW` requires no initial setup, once the sketch is uploaded, it automatically prints the MAC address in the serial monitor for integration with ESPNOW nodes/sensors.
+
 
 ## Work in progress...
