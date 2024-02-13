@@ -1,2 +1,2 @@
 # CapiBridge
- Gateway LoRa / ESPNOW / BT to WIFI
+Gateway between WIFI / LoRa / ESPNOW / BT
