@@ -1,6 +1,6 @@
 /* Json Structur
  *  
- *  Example of received data {\"k\":\"abc\",\"id\":\"node2\",\"r\":\"115\",\"b\":\"3.2\",\"rw\":\"smile\"}
+ *  Example of received data from LoRa directly or from Second ESP "Serial1" {\"k\":\"abc\",\"id\":\"node2\",\"r\":\"115\",\"b\":\"3.2\",\"rw\":\"smile\"}
  *  
  k   - Network Key
  id  - Node Name
