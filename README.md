@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/CapiBridgey.png"/>
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/banner.jpg"/>
 
 🤗 Please consider subscribing to my [YouTube channel](https://www.youtube.com/@PricelessToolkit/videos) Your subscription goes a long way in backing my work. if you feel more generous, buy me a coffee
 
@@ -8,8 +8,7 @@
 # CapiBridge
 CapiBridge is an open-source gateway between different communication technologies LoRa, ESP-NOW, and WiFi by receiving JSON strings from LoRa, and ESP-NOW and publishing them to an MQTT server. It automatically separates the data into dynamic topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all projects, focusing on simplicity and unified protocol handling.
 
-JSON String example, Key and node Name is required
-`{\"k\":\"key\",\"id\":\"node_name\",\"b\":\"3.2v\",\"rw\":\"row_string\"}`
+JSON String example: `{\"k\":\"key\",\"id\":\"node_name\",\"b\":\"3.2v\",\"rw\":\"row_string\"}`
 
 # 🛒 [Buy Assembled CapiBridge KIT](https://www.facebook.com/groups/pricelesstoolkit)
 
@@ -37,7 +36,7 @@ ____________
 ## Before you start
 
 > [!WARNING]
-> ### 🔥 Do not connect power until all antennas are connected, otherwise, the transmitters will burn out.🔥
+> ### 🔥Connect antennas before power to avoid transmitter burnout.🔥
 
 > [!IMPORTANT]
 > If you're new to Arduino-related matters, please refrain from asking basic questions like "how to install Arduino IDE". There are already plenty of excellent tutorials available on the internet. If you encounter any issues to which you can't find the answer on the [Web](https://www.google.com/), feel free to join our [Facebook Group](https://www.facebook.com/groups/pricelesstoolkit) or open a new [discussion](https://github.com/PricelessToolkit/CapiBridge/discussions) topic in the dedicated tab. Remember that providing detailed information about the problem will help me offer more effective assistance. More information equals better help!
@@ -52,6 +51,37 @@ ____________
 </details>
 
 ____________
+
+## Arduino IDE Configuration
+### Used Arduino Libraries
+```c
+#include <Arduino.h>
+#include <SPI.h>
+#include <LoRa.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+```
+
+CapiBridge is based on ESP32-C3 so If you are using ESP32 for the first time, you need To install the ESP32 board and all libraries, in your Arduino IDE. See `Used Arduino Libraries`.
+- In your Arduino IDE, go to File> Preferences.
+- Enter `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json` into the “Additional Boards Manager URLs” field. Then, click the “OK” button
+- Open the Boards Manager. Go to Tools > Board > Boards Manager and Search for ESP32 and press the install button for the “esp32 by Expressif Systems“
+- Open Library Manager search for PubSubClient and press the install button, do the same for other libraries, See `Used Arduino Libraries`
+
+
+For board configuration in IDE, see the screenshot below
+<details>
+  <summary>Board config Screenshot</summary>
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/board_config.jpg"/>
+</details>
+
+____________
+
+
+
+
+
 
 ## CapiBridge ESP1 configuration
 
