@@ -53,27 +53,28 @@ ____________
 ____________
 
 ## Arduino IDE Configuration
+
+> [!NOTE]
+> Arduino IDE 2.3.0
+
 ### Used Arduino Libraries
 ```c
-#include <Arduino.h>
-#include <SPI.h>
 #include <LoRa.h>
-#include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 ```
 
-CapiBridge is based on ESP32-C3 so If you are using ESP32 for the first time, you need To install the ESP32 board and all libraries, in your Arduino IDE. See `Used Arduino Libraries`.
+CapiBridge is based on ESP32-C3 so If you are using ESP32 for the first time, you need To install the ESP32 board and all libraries, in your Arduino IDE.
 - In your Arduino IDE, go to File> Preferences.
 - Enter `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json` into the “Additional Boards Manager URLs” field. Then, click the “OK” button
 - Open the Boards Manager. Go to Tools > Board > Boards Manager and Search for ESP32 and press the install button for the “esp32 by Expressif Systems“
-- Open Library Manager search for PubSubClient and press the install button, do the same for other libraries, See `Used Arduino Libraries`
+- Open Library Manager search for PubSubClient and press the install button, do the same for other libraries, or, just copy uploaded libraries `content of lib folder` to your Arduino library folder. for Windows users, folder is located at `Documents\Arduino\libraries`
 
 
 For board configuration in IDE, see the screenshot below
 <details>
   <summary>Board config Screenshot</summary>
-<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/board_config.jpg"/>
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/board_config.jpg"/>
 </details>
 
 ____________
