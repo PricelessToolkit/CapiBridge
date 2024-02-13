@@ -17,6 +17,18 @@
 
 ////////////////////////////// LORA CONFIG ////////////////////////////////////
 
+// For sending 6 bytes "6 characters" of data using different Spreading Factors (SF), the estimated time on air (ToA)
+// for each SF is as follows:
+
+// SF7: Approximately 0.027 seconds (27.494 milliseconds)
+// SF8: Approximately 0.052 seconds (52.224 milliseconds)
+// SF9: Approximately 0.100 seconds (100.147 milliseconds)
+// SF10: Approximately 0.193 seconds (193.413 milliseconds)
+// SF11: Approximately 0.385 seconds (385.297 milliseconds)
+// SF12: Approximately 0.746 seconds (746.127 milliseconds)
+// These calculations demonstrate how the time on air increases with higher Spreading Factors
+// due to the decreased data rate, which is a trade-off for increased communication range and signal robustness.
+
 #define SIGNAL_BANDWITH 125E3  // signal bandwidth in Hz, defaults to 125E3
 #define SPREADING_FACTOR 12    // ranges from 6-12,default 7 see API docs
 #define CODING_RATE 5          // Supported values are between 5 and 8, these correspond to coding rates of 4/5 and 4/8. The coding rate numerator is fixed at 4.

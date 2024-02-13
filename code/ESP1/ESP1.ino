@@ -250,7 +250,7 @@ void loop() {
     // read the incoming string:
     String serialrow = Serial1.readStringUntil('\n');
     parseIncomingPacket(serialrow);
-    Serial.print("Message From ESP2: ");
+    Serial.print("ESP-NOW Message: ");
     Serial.println(serialrow);
     
   }
@@ -263,7 +263,7 @@ void loop() {
       digitalWrite(LED_PIN, LOW);                 // Enabling LED_PIN
       LedStartTime = millis();                    // LED Timer Start
     }
-    Serial.print("Message From LoRa: ");
+    Serial.print("LoRa Message: ");
     Serial.println(recv);
     if (client.connected()) {
       //////////////// Inserting RSSI ///////////////////
