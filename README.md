@@ -73,7 +73,7 @@ CapiBridge is based on ESP32-C3 so If you are using ESP32 for the first time, yo
 For board configuration in IDE, see the screenshot below
 <details>
   <summary>Board config Screenshot</summary>
-<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/board_config.jpg"/>
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/board_config.jpg"/>
 </details>
 
 ____________
