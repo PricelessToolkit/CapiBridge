@@ -7,7 +7,7 @@
 // Global Variables
 StaticJsonDocument<256> doc;
 uint8_t receiverAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // For broadcasting
-String node_name = "LazyESP"; // Your node name
+String node_name = "esp32"; // Your node name
 String gateway_key = "ab";     // Your gateway key
 
 String Vbattery = "3.2";
