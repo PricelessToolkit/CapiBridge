@@ -5,12 +5,39 @@
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U6U2QLAF8)
 
-# CapiBridge
+## Work in progress... project is not ready
+
+# CapiBridge 🛒 [Buy Assembled CapiBridge KIT](https://www.facebook.com/groups/pricelesstoolkit)
 CapiBridge is an open-source gateway between different communication technologies LoRa, ESP-NOW, and WiFi by receiving JSON strings from LoRa, and ESP-NOW and publishing them to an MQTT server. It automatically separates the data into dynamic topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all projects, focusing on simplicity and unified protocol handling.
 
 JSON String example: `{\"k\":\"key\",\"id\":\"node_name\",\"b\":\"3.2v\",\"rw\":\"row_string\"}`
 
-# 🛒 [Buy Assembled CapiBridge KIT](https://www.facebook.com/groups/pricelesstoolkit)
+```
+ k   - Gateway Key
+ id  - Node Name
+ r   - RSSI
+ b   - Battery Voltage
+ v   - Voltage
+ a   - Amps
+ l   - Lux
+ m   - Motion (on | off)
+ w   - Weight
+ s   - State (on | off)
+ e   - Encoder
+ t   - Temperature
+ t2  - Second Temperature
+ ah  - Air Humidity
+ sh  - Soile Humidity
+ rw  - Row Data
+ p1  - Push Button State (on | off)
+ p2  - Push Button State (on | off)
+ p3  - Push Button State (on | off)
+ p4  - Push Button State (on | off)
+
+ you can add new keys very easily
+```
+
+
 
 ### _Contributors_
 
@@ -136,4 +163,4 @@ ____________
 > ESP2 for `ESPNOW` requires no initial setup, once the sketch is uploaded, it automatically prints the MAC address in the serial monitor for integration with ESPNOW nodes/sensors.
 
 
-## Work in progress...
+
