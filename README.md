@@ -155,6 +155,19 @@ ____________
 
 > [!IMPORTANT]
 > For optimizing the `SPREADING_FACTOR` (SF) in your network, it's crucial not to default to SF12 aiming for maximum distance without considering its downsides. SF12, while extending range, significantly slows down data transmission. For example, if your furthest sensor is only 100 meters away, opting for SF7 is more efficient. SF7 is faster, taking only 0.027 seconds to transmit "6 bytes", thus consuming less power compared to SF12, which would take 0.75 seconds for the same task. Therefore, it's essential to choose the SF wisely based on your specific needs and understand the trade-offs. Avoid setting SF12 by default without assessing the impact on speed, power consumption, and time on air (ToA) for others.
+```c
+// For sending 6 bytes "6 characters" of data using different Spreading Factors (SF), the estimated time on air (ToA)
+// for each SF is as follows:
+
+// SF7: Approximately 0.027 seconds (27.494 milliseconds)
+// SF8: Approximately 0.052 seconds (52.224 milliseconds)
+// SF9: Approximately 0.100 seconds (100.147 milliseconds)
+// SF10: Approximately 0.193 seconds (193.413 milliseconds)
+// SF11: Approximately 0.385 seconds (385.297 milliseconds)
+// SF12: Approximately 0.746 seconds (746.127 milliseconds)
+// These calculations demonstrate how the time on air increases with higher Spreading Factors
+// due to the decreased data rate, which is a trade-off for increased communication range and signal robustness.
+```
 
 ____________
 
