@@ -46,6 +46,7 @@ JSON String example: `{\"k\":\"key\",\"id\":\"node_name\",\"b\":\"3.2v\",\"rw\":
 
 ____________
 
+
 ## Specifications
 - Based on 2x ESP32-C3 and LoRa Module
 - ESP1 Free GPIOs
@@ -59,6 +60,7 @@ ____________
 
 ____________
 
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/3D_open3.JPG"/>
 
 ## Before you start
 
