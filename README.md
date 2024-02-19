@@ -13,8 +13,8 @@ CapiBridge is an open-source gateway between different communication technologie
 Example of a JSON String Sent by a Sensor: `{\"k\":\"key\",\"id\":\"node_name\",\"b\":\"3.2v\",\"rw\":\"row_string\"}`
 
 ```
- k   - Gateway Key
- id  - Node Name
+ k   - Gateway Key  - Required
+ id  - Node Name    - Required
  b   - Battery Voltage
  v   - Voltage
  a   - Amps
