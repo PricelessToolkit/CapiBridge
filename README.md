@@ -180,4 +180,4 @@ ____________
 
 ## Home Assistant Configuration
 > [!NOTE]
-> For now CapiBridge doesn't have MQTT auto-discovery, so we need to create MQTT sensors in configuration.yaml, below you will find examples for each supported sensor topics. it's important to note that you can add a new topic in the gateway by adding for example `publishIfKeyExists(doc, "f", "/speed");` in `ESP1.ino` file.
+> For now CapiBridge doesn't have MQTT auto-discovery, so we need to create MQTT sensors in configuration.yaml, below you will find examples for each supported sensor topics. it's important to note that you can add a new topic in the gateway by adding for example `publishIfKeyExists(doc, "sp", "/speed");` in `ESP1.ino` file.
