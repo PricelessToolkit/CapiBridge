@@ -15,24 +15,23 @@ Example of a JSON String Sent by a Sensor: `{\"k\":\"key\",\"id\":\"node_name\",
 ```
  k   - Gateway Key
  id  - Node Name
- r   - RSSI
  b   - Battery Voltage
  v   - Voltage
  a   - Amps
  l   - Lux
- m   - Motion (on | off)
+ m   - Motion
  w   - Weight
- s   - State (on | off)
+ s   - State
  e   - Encoder
  t   - Temperature
  t2  - Second Temperature
  ah  - Air Humidity
  sh  - Soile Humidity
  rw  - Row Data
- p1  - Push Button State (on | off)
- p2  - Push Button State (on | off)
- p3  - Push Button State (on | off)
- p4  - Push Button State (on | off)
+ p1  - Push Button State
+ p2  - Push Button State
+ p3  - Push Button State
+ p4  - Push Button State
 
  you can add new keys very easily
 ```
