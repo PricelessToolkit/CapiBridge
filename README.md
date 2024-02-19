@@ -41,7 +41,7 @@ Example of a JSON String Sent by a Sensor: `{\"k\":\"key\",\"id\":\"node_name\",
 ### _Contributors_
 
 > [!NOTE]
->  If you're ready to contribute to the project, your support would be greatly appreciated. Due to time constraints, I may not be able to quickly verify new "features" or completely new "code" functionality, so please create a new code/script in the new folder.
+>  If you're ready to contribute to the project, your support would be greatly appreciated. Due to time constraints, I may not be able to quickly verify new "features" or completely new "code" functionality, so please create a new code/script in the new folder. it's important to note that you can add a new topic in the gateway by adding `publishIfKeyExists(doc, "s", "/speed");` in gateway `ESP1.ino` file.
 
 ____________
 
@@ -176,5 +176,8 @@ ____________
 > [!NOTE]
 > ESP2 for `ESPNOW` requires no initial setup, once the sketch is uploaded, it automatically prints the MAC address in the serial monitor for integration with ESPNOW nodes/sensors.
 
+____________
 
-
+## Home Assistant Configuration
+> [!NOTE]
+> For now CapiBridge doesn't have MQTT auto-discovery, so we need to create MQTT sensors in configuration.yaml, below you will find examples for each supported sensor topics. it's important to note that you can add a new topic in the gateway by adding `publishIfKeyExists(doc, "m", "/motion");` in `ESP1.ino` file.
