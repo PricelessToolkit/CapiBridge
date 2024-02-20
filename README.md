@@ -41,8 +41,7 @@ Example of a JSON String Sent by a Sensor: `{\"k\":\"key\",\"id\":\"node_name\",
 ### _Contributors_
 
 > [!NOTE]
->  If you're ready to contribute to the project, your support would be greatly appreciated. Due to time constraints, I may not be able to quickly verify new "features" or completely new "code" functionality, so please create a new code/script in the new folder. it's important to note that you can add a new topic in the gateway by adding `publishIfKeyExists(doc, "s", "/speed");` in gateway `ESP1.ino` file.
-
+>  If you're ready to contribute to the project, your support would be greatly appreciated. Due to time constraints, I may not be able to quickly verify new "features" or completely new "code" functionality, so please create a new code/script in the new folder.
 ____________
 
 
