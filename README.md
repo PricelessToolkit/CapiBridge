@@ -10,29 +10,28 @@
 # CapiBridge 🛒 [Buy Assembled CapiBridge KIT](https://www.facebook.com/groups/pricelesstoolkit)
 CapiBridge is an open-source gateway between different communication technologies LoRa, ESP-NOW, and WiFi by receiving JSON strings from LoRa, and ESP-NOW and publishing them to an MQTT server. It automatically separates the data into dynamic topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all projects, focusing on simplicity and unified protocol handling.
 
-JSON String example: `{\"k\":\"key\",\"id\":\"node_name\",\"b\":\"3.2v\",\"rw\":\"row_string\"}`
+Example of a JSON String Sent by a Sensor: `{\"k\":\"key\",\"id\":\"node_name\",\"b\":\"3.2v\",\"rw\":\"row_string\"}`
 
 ```
- k   - Gateway Key
- id  - Node Name
- r   - RSSI
+ k   - Gateway Key  - Required
+ id  - Node Name    - Required
  b   - Battery Voltage
  v   - Voltage
  a   - Amps
  l   - Lux
- m   - Motion (on | off)
+ m   - Motion
  w   - Weight
- s   - State (on | off)
+ s   - State
  e   - Encoder
  t   - Temperature
  t2  - Second Temperature
  ah  - Air Humidity
  sh  - Soile Humidity
  rw  - Row Data
- p1  - Push Button State (on | off)
- p2  - Push Button State (on | off)
- p3  - Push Button State (on | off)
- p4  - Push Button State (on | off)
+ p1  - Push Button State
+ p2  - Push Button State
+ p3  - Push Button State
+ p4  - Push Button State
 
  you can add new keys very easily
 ```
@@ -43,7 +42,6 @@ JSON String example: `{\"k\":\"key\",\"id\":\"node_name\",\"b\":\"3.2v\",\"rw\":
 
 > [!NOTE]
 >  If you're ready to contribute to the project, your support would be greatly appreciated. Due to time constraints, I may not be able to quickly verify new "features" or completely new "code" functionality, so please create a new code/script in the new folder.
-
 ____________
 
 
@@ -68,7 +66,7 @@ ____________
 > ### 🔥Connect antennas before power to avoid transmitter burnout.🔥
 
 > [!IMPORTANT]
-> If you're new to Arduino-related matters, please refrain from asking basic questions like "how to install Arduino IDE". There are already plenty of excellent tutorials available on the internet. If you encounter any issues to which you can't find the answer on the [Web](https://www.google.com/), feel free to join our [Facebook Group](https://www.facebook.com/groups/pricelesstoolkit) or open a new [discussion](https://github.com/PricelessToolkit/CapiBridge/discussions) topic in the dedicated tab. Remember that providing detailed information about the problem will help me offer more effective assistance. More information equals better help!
+> If you're new to Arduino-related matters, please refrain from asking basic questions like "how to install Arduino IDE". There are already plenty of excellent tutorials available on the internet. If you encounter any issues to which you can't find the answer -> [Here](https://www.google.com/) , feel free to join our [Facebook Group](https://www.facebook.com/groups/pricelesstoolkit) or open a new [discussion](https://github.com/PricelessToolkit/CapiBridge/discussions) topic in the dedicated tab. Remember that providing detailed information about the problem will help me offer more effective assistance. More information equals better help!
 
 
 ____________
@@ -149,7 +147,7 @@ ____________
 #define SIGNAL_BANDWITH 125E3  // signal bandwidth in Hz, defaults to 125E3
 #define SPREADING_FACTOR 8    // ranges from 6-12, default 7 see API docs
 #define CODING_RATE 5          // Supported values are between 5 and 8
-#define SYNC_WORD 0xF3         // byte value to use as the sync word, defaults to 0x12
+#define SYNC_WORD 0xF3         // Any hexadecimal value from 0x00 to 0xFF. Dont use LoRaWAN/TTN "0x34"
 #define PREAMBLE_LENGTH 6      // Supported values are between 6 and 65535.
 #define TX_POWER 20            // TX power in dB, defaults to 17, Supported values are 2 to 20
 #define BAND 433E6             // 433E6 / 868E6 / 915E6 - Depends on what board you bought.
@@ -177,5 +175,8 @@ ____________
 > [!NOTE]
 > ESP2 for `ESPNOW` requires no initial setup, once the sketch is uploaded, it automatically prints the MAC address in the serial monitor for integration with ESPNOW nodes/sensors.
 
+____________
 
-
+## Home Assistant Configuration
+> [!NOTE]
+> For now CapiBridge doesn't have MQTT auto-discovery, so we need to create MQTT sensors in configuration.yaml, below you will find examples for each supported sensor topics. it's important to note that you can add a new topic in the gateway by adding for example `publishIfKeyExists(doc, "sp", "/speed");` in `ESP1.ino` file.
