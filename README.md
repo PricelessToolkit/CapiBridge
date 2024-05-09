@@ -37,6 +37,13 @@ ____________
 
 ____________
 
+## Schematic
+<details>
+  <summary>View schematic. Click here</summary>
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/capibridge_schematic.jpg"/>
+</details>
+
+
 <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/3D_open3.JPG"/>
 
 ## Before you start
@@ -50,13 +57,7 @@ ____________
 
 ____________
 
-## Schematic
-<details>
-  <summary>View schematic. Click here</summary>
-<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/capibridge_schematic.jpg"/>
-</details>
 
-____________
 
 ## Arduino IDE Configuration
 
