@@ -195,7 +195,7 @@ Full Suported List
 | `w`   | Weight                    | grams               | No       |
 | `s`   | State                     | Anything            | No       |
 | `t`   | Temperature               | °C                  | No       |
-| `t2`  | Temperature               | °C                  | No       |
+| `t2`  | Temperature 2             | °C                  | No       |
 | `hu`  | Humidity                  | %                   | No       |
 | `mo`  | Moisture                  | %                   | No       |
 | `rw`  | ROW                       | Anything            | No       |
