@@ -7,7 +7,7 @@
 
 ## Work in progress... project is not ready
 
-# CapiBridge 🛒 [Buy Assembled CapiBridge KIT](https://www.facebook.com/groups/pricelesstoolkit)
+# 🛒 [Buy Assembled CapiBridge KIT](https://www.facebook.com/groups/pricelesstoolkit)
 CapiBridge is an open-source gateway between different communication technologies LoRa, ESP-NOW, and WiFi by receiving JSON strings from LoRa, and ESP-NOW and publishing them to an MQTT server. It automatically separates the data into dynamic topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all projects, focusing on simplicity and unified protocol handling.
 
 
