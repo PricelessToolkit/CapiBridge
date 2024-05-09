@@ -158,9 +158,9 @@ ____________
 > With MQTT-Autodiscovery, there's no need to configure anything in Home Assistant manually. Any sensor or node that sends a JSON string with special keys `('k' for the gateway private key and 'id' for the node name, both of which are mandatory)` will be automatically discovered. Refer to the table below for details, and of course, full ESP32 examples are provided.
 
 
-## Sensor / Node Configuration
+## Sensor / Node Example
 
-Example of a JSON String Sent by a Sensor/Node:
+JSON String Sent by a Sensor/Node:
 
 ```json
 {
