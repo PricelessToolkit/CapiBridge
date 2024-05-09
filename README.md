@@ -49,7 +49,7 @@ ____________
 ## Before you start
 
 > [!WARNING]
-> ### 🔥Connect antennas before USB to avoid transmitter burnout.🔥
+> ### 🔥Connect the antenna first to prevent damage to the transmitter.🔥
 
 > [!IMPORTANT]
 > If you're new to Arduino-related matters, please refrain from asking basic questions like "how to install Arduino IDE". There are already plenty of excellent tutorials available on the internet. If you encounter any issues to which you can't find the answer -> [Here](https://www.google.com/) , feel free to join our [Facebook Group](https://www.facebook.com/groups/pricelesstoolkit) or open a new [discussion](https://github.com/PricelessToolkit/CapiBridge/discussions) topic in the dedicated tab. Remember that providing detailed information about the problem will help me offer more effective assistance. More information equals better help!
