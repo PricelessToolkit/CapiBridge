@@ -64,7 +64,7 @@ ____________
 > [!NOTE]
 > Arduino IDE 2.3.0
 
-### Used Arduino Libraries
+#### Used Arduino Libraries
 ```c
 #include <Arduino.h>
 #include <SPI.h>
@@ -94,14 +94,14 @@ ____________
 
 
 
-## CapiBridge ESP1.ino sketch configuration
+## ESP1.ino sketch configuration
 
 > [!NOTE]
 > For `ESP1.ino`
 > all configurations are done in the file `config.h`
 
 
-### Gateway Key
+#### Gateway Key
 
 > [!IMPORTANT]
 > Unique key within the JSON to differentiate your signal from others. Must match the key in Nodes/Sensors.
@@ -112,7 +112,7 @@ ____________
 
 
 
-### WIFI and MQTT Server Configuration
+#### WIFI and MQTT Server Configuration
 ```c
 #define WIFI_SSID "your_wifi_ssid"
 #define WIFI_PASSWORD "your_wifi_passwd"
@@ -121,7 +121,7 @@ ____________
 #define MQTT_SERVER "your_mqtt_broker_address"
 #define MQTT_PORT 1883
 ```
-### LoRa Configuration
+#### LoRa Configuration
 
 > [!IMPORTANT]
 > LoRa configuration must match the configuration in Nodes/Sensors.
@@ -154,7 +154,7 @@ ____________
 
 ____________
 
-## CapiBridge ESP2.ino sketch configuration
+## ESP2.ino sketch configuration
 > [!NOTE]
 > ESP2 for `ESPNOW` requires no initial setup, once the sketch is uploaded, it automatically prints the MAC address in the serial monitor for integration with ESPNOW nodes/sensors.
 
