@@ -81,13 +81,6 @@ CapiBridge is based on ESP32-C3 so If you are using ESP32 for the first time, yo
 - Open the Boards Manager. Go to Tools > Board > Boards Manager and Search for ESP32 and press the install button for the “esp32 by Expressif Systems“
 - Open Library Manager search for PubSubClient and press the install button, do the same for other libraries, or, just copy uploaded libraries `content of lib folder` to your Arduino library folder. for Windows users, folder is located at `Documents\Arduino\libraries`
 
-
-For board configuration in IDE, see the screenshot below
-<details>
-  <summary>Board config Screenshot</summary>
-<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/board_config.jpg"/>
-</details>
-
 ____________
 
 
@@ -158,6 +151,15 @@ ____________
 ## ESP2.ino sketch configuration
 > [!NOTE]
 > ESP2 for `ESPNOW` requires no initial setup, once the sketch is uploaded, it automatically prints the MAC address in the serial monitor for integration with ESPNOW nodes/sensors.
+____________
+
+## Uploading Code to CapiBridge
+> [!WARNING]
+> ### 🔥Connect antennas before power to avoid transmitter burnout.🔥
+
+1. Select board type in IDE, see the screenshot below
+
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/board_config.jpg"/>
 
 ____________
 
