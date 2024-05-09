@@ -166,9 +166,7 @@ ____________
 > With MQTT-Autodiscovery, there's no need to configure anything in Home Assistant manually. Any sensor or node that sends a JSON string with special keys `('k' for the gateway private key and 'id' for the node name, both of which are mandatory)` will be automatically discovered. Refer to the table below for details, and of course, full ESP32 examples are provided.
 
 
-## Sensor / Node Example
-
-JSON String Sent by a Sensor/Node:
+## JSON String Sent by a Sensor/Node:
 
 ```json
 {
@@ -179,18 +177,6 @@ JSON String Sent by a Sensor/Node:
   "dr": "on"
 }
 ```
-
-The simplest way to create JSON String without the ArduinoJson.h library and transmit it via LoRa. `Example from MailBox sensor`
-
-```c
-#define NODE_NAME "mbox"
-float volts = analogReadEnh(PIN_PB4, 12) * (1.1 / 4096) * (30 + 10) / 10;
-
-// Send a message via LoRa
-LoRa.print("{\"k\":\"ab\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + volts + "}");  
-```
-
-
 Full Suported List
 
 
@@ -217,4 +203,18 @@ Full Suported List
 | `dr`  | Door                      | Binary on/off       | No       |
 | `wd`  | Window                    | Binary on/off       | No       |
 | `vb`  | Vibration                 | Binary on/off       | No       |
+
+
+## Sensor / Node Example
+The simplest way to create JSON String without the ArduinoJson.h library and transmit it via LoRa. `Example from MailBox sensor`
+
+```c
+#define NODE_NAME "mbox"
+float volts = analogReadEnh(PIN_PB4, 12) * (1.1 / 4096) * (30 + 10) / 10;
+
+// Send a message via LoRa
+LoRa.print("{\"k\":\"ab\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + volts + "}");  
+```
+
+
 
