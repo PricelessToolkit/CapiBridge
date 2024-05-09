@@ -11,27 +11,29 @@
 CapiBridge is an open-source gateway between different communication technologies LoRa, ESP-NOW, and WiFi by receiving JSON strings from LoRa, and ESP-NOW and publishing them to an MQTT server. It automatically separates the data into dynamic topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all projects, focusing on simplicity and unified protocol handling.
 
 Example of a JSON String Sent by a Sensor: `{\"k\":\"key\",\"id\":\"node_name\",\"b\":\"3.2v\",\"rw\":\"row_string\"}`
-
+Full Suported List
 ```
- k   - Gateway Key  - Required
- id  - Node Name    - Required
- b   - Battery Voltage
- v   - Voltage
- a   - Amps
- l   - Lux
- m   - Motion
- w   - Weight
- s   - State
- e   - Encoder
- t   - Temperature
- t2  - Second Temperature
- ah  - Air Humidity
- sh  - Soile Humidity
- rw  - Row Data
- p1  - Push Button State
- p2  - Push Button State
- p3  - Push Button State
- p4  - Push Button State
+"k" - Key (Private Gateway key "ab") - REQUIRED!!!
+"id" - Key (Node Name "ESP32") - REQUIRED!!!
+"r" - RSSI (Unit of measurement: dbm)
+"b" - Battery Voltage (Unit of measurement: Volts)
+"v" - Volts (Unit of measurement: Volts)
+"pw" - Current (Unit of measurement: mAh)
+"l" - Luminance (Unit of measurement: lux)
+"m" - Motion (Binary on | off)
+"w" - Weight (Unit of measurement: grams)
+"s" - State (Unit of measurement: None/ROW)
+"t" - Temperature (Unit of measurement: °C)
+"t2" - Temperature (Unit of measurement: °C)
+"hu" - Humidity (Unit of measurement: %)
+"mo" - Moisture (Unit of measurement: %)
+"rw" - ROW (Value: Text & Number)
+"bt" - Button (Binary on | off)
+"atm" - Pressure (Unit of measurement: kph)
+"cd" - Dioxyde de carbone (Unit of measurement: ppm)
+"dr" - Door (Binary on | off)
+"wd" - Window (Binary on | off)
+"vb" - Vibration (Binary on | off)
 
  you can add new keys very easily
 ```
