@@ -168,6 +168,7 @@ ____________
 6. Open ESP2.ino sketch.
 7.  Click Upload to board.
 
+Everything is ready in a minute CapiBridge RSSI entity will appear in the Home Assistant.
 ____________
 
 ## Home Assistant Zero Configuration
