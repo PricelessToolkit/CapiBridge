@@ -19,15 +19,21 @@ ____________
 
 
 ## Specifications
-- Based on 2x ESP32-C3 and LoRa Module
-- ESP1 Free GPIOs
-  - IO7, IO10
-- ESP2 Free GPIOs
-  - IO10, IO3, IO1, IO0, IO4, IO5, IO6, IO7
+- 1x LoRa Module 868 or 433MHz
+- 2x ESP32-C3
+ - ESP1 Free GPIOs
+   - IO7, IO10
+ - ESP2 Free GPIOs
+   - IO10, IO3, IO1, IO0, IO4, IO5, IO6, IO7
 - Power Pins 5V, 3.3V, GND
-- USB-C with auto reset "for programming"
+- USB-C with auto reset
 - UART switch for selecting ESP1|ESP2
 - Buttons for flashing and reset
+- Debug LEDs
+  - USB - TX, RX
+  - ESP1 to ESP2 - TX, RX
+  - One LED for LoRa
+  - One LED for ESP-NOW
 
 ____________
 
