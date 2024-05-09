@@ -1,31 +1,3 @@
-/* Json Structur
- *  
- *  Example of received data from LoRa directly or from Second ESP "Serial1" {\"k\":\"abc\",\"id\":\"node2\",\"r\":\"115\",\"b\":\"3.2\",\"rw\":\"smile\"}
- *  
- k   - Gateway Key
- id  - Node Name
- r   - RSSI
- b   - Battery Voltage
- v   - Voltage
- a   - Amps
- l   - Lux
- m   - Motion (on | off)
- w   - Weight
- s   - State (on | off)
- e   - Encoder
- t   - Temperature
- t2  - Second Temperature
- ah  - Air Humidity
- sh  - Soile Humidity
- rw  - Row Data
- p1  - Push Button State (on | off)
- p2  - Push Button State (on | off)
- p3  - Push Button State (on | off)
- p4  - Push Button State (on | off)
-
- */
-
-
 #include <Arduino.h>
 #include "config.h"
 #include <SPI.h>
@@ -48,18 +20,22 @@
 
 
 #define MQTT_RETAIN true
-#define BINARY_SENSOR_TOPIC "homeassistant/binary_sensor/capibridge/"
-#define SENSOR_TOPIC "homeassistant/sensor/capibridge/"
+#define BINARY_SENSOR_TOPIC "homeassistant/binary_sensor/"
+#define SENSOR_TOPIC "homeassistant/sensor/"
+#define CAPIBRIDGE_RSSI_TOPIC "homeassistant/sensor/CapiBridge/rssi"
 
 unsigned long LedStartTime = 0;
+unsigned long diagTimer = 60000;
+unsigned long lastDiagTimer = 0;
+unsigned long currentDiagMillis;
 
 struct json_msg {
   String k;
   String id;
   int16_t r;
   float b;
-  float v;
-  float a;
+  int16_t v;
+  float pw;
   int16_t l;
   String m;
   float w;
@@ -67,13 +43,15 @@ struct json_msg {
   int16_t e;
   float t;
   float t2;
-  int16_t ah;
-  int16_t sh;
+  int16_t hu;
+  int16_t mo;
   String rw;
-  String p1;
-  String p2;
-  String p3;
-  String p4;
+  String bt;
+  float atm;
+  float cd;
+  String dr;
+  String wd;
+  String vb;
 };
 
 json_msg received_json_message;
@@ -105,8 +83,8 @@ void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Buffer needs to be increased to accomodate the config payloads
-    if (client.setBufferSize(380)) {
-      Serial.println("Buffer Size increased to 380 byte");
+    if (client.setBufferSize(1024)) {
+      Serial.println("Buffer Size increased to 1024 byte");
     } else {
       Serial.println("Failed to allocate larger buffer");
     }
@@ -165,6 +143,7 @@ void setup() {
 void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& topicSuffix) {
   if (doc.containsKey(key)) {
     String topic = String(SENSOR_TOPIC) + String(received_json_message.id) + topicSuffix;
+    String binTopic = String(BINARY_SENSOR_TOPIC) + String(received_json_message.id) + topicSuffix;
     String value;
 
     // Determine the type of the key value and convert to string appropriately
@@ -183,14 +162,443 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
       return;
     }
 
+
+ ///////////////////////// auto-discovery ////////////////////////////////
+
+/* Json Structur
+  Example of received data from LoRa directly or from Second ESP "Serial1" {\"k\":\"ab\",\"id\":\"node2\",\"r\":\"115\",\"b\":\"3.2\",\"rw\":\"smile\"}
+
+ */
+
+
+
+    // auto-discovery for Battery
+    if (doc.containsKey("b")) {
+        
+
+    client.publish(
+        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/batt/config").c_str(),
+        (String("{"
+        "\"name\":\"Battery\","
+        "\"device_class\":\"voltage\","
+        "\"unit_of_measurement\":\"V\","
+        "\"icon\":\"mdi:battery\","
+        "\"entity_category\":\"diagnostic\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/batt" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_batt" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+    // auto-discovery for RSSI
+    if (doc.containsKey("r")) {
+
+
+    client.publish(
+      (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/rssi/config").c_str(),
+      (String("{"
+        "\"name\":\"RSSI\","
+        "\"unit_of_measurement\":\"dBm\","
+        "\"device_class\":\"signal_strength\","
+        "\"icon\":\"mdi:signal\","
+        "\"entity_category\":\"diagnostic\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() +  "/rssi" +"\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_rssi" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() + "\"}}").c_str(),
+      MQTT_RETAIN);
+
+      }
+
+
+    
+    // auto-discovery for Row data TEXT
+    if (doc.containsKey("rw")) {
+
+
+    client.publish(
+      (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/row/config").c_str(),
+      (String("{"
+        "\"name\":\"Text\","
+        "\"icon\":\"mdi:text\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() +  "/row" +"\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_row" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+      MQTT_RETAIN);
+
+      }
+
+
+    // auto-discovery for State
+    if (doc.containsKey("s")) {
+
+
+    client.publish(
+      (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/state/config").c_str(),
+      (String("{"
+        "\"name\":\"State\","
+        "\"icon\":\"mdi:list-status\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() +  "/state" +"\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_state" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() + "\"}}").c_str(),
+      MQTT_RETAIN);
+
+      }
+
+    // auto-discovery for Volt
+    if (doc.containsKey("v")) {
+        
+
+    client.publish(
+        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/volt/config").c_str(),
+        (String("{"
+        "\"name\":\"Volt\","
+        "\"device_class\":\"voltage\","
+        "\"unit_of_measurement\":\"V\","
+        "\"icon\":\"mdi:flash-triangle\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/volt" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_volt" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+
+    // auto-discovery for Current
+    if (doc.containsKey("pw")) {
+        
+
+    client.publish(
+        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/current/config").c_str(),
+        (String("{"
+        "\"name\":\"Current\","
+        "\"device_class\":\"current\","
+        "\"unit_of_measurement\":\"mA\","
+        "\"icon\":\"mdi:current-dc\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/current" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_pw" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+
+
+
+    // auto-discovery for illuminance
+    if (doc.containsKey("l")) {
+        
+
+    client.publish(
+        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/lx/config").c_str(),
+        (String("{"
+        "\"name\":\"Lux\","
+        "\"device_class\":\"illuminance\","
+        "\"unit_of_measurement\":\"lx\","
+        "\"icon\":\"mdi:brightness-1\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/lx" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_lx" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+
+    // auto-discovery for Motion
+    if (doc.containsKey("m")) {
+        
+
+    client.publish(
+        (String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/motion/config").c_str(),
+        (String("{"
+        "\"name\":\"Motion\","
+        "\"device_class\":\"motion\","
+        "\"icon\":\"mdi:motion\","
+        "\"state_topic\":\"") + String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/motion" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_m" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+
+    // auto-discovery for Weight
+    if (doc.containsKey("w")) {
+        
+
+    client.publish(
+        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/weight/config").c_str(),
+        (String("{"
+        "\"name\":\"Weight\","
+        "\"device_class\":\"weight\","
+        "\"unit_of_measurement\":\"g\","
+        "\"icon\":\"mdi:weight\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/weight" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_w" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+
+    // auto-discovery for Temperature
+    if (doc.containsKey("t")) {
+        
+
+    client.publish(
+        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/tmp/config").c_str(),
+        (String("{"
+        "\"name\":\"Temperature\","
+        "\"device_class\":\"temperature\","
+        "\"unit_of_measurement\":\"°C\","
+        "\"icon\":\"mdi:thermometer\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/tmp" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_tmp" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+
+    // auto-discovery for Temperature 2
+    if (doc.containsKey("t2")) {
+        
+
+    client.publish(
+        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/tmp2/config").c_str(),
+        (String("{"
+        "\"name\":\"Temperature2\","
+        "\"device_class\":\"temperature\","
+        "\"unit_of_measurement\":\"°C\","
+        "\"icon\":\"mdi:thermometer\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/tmp2" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_tmp2" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+    // auto-discovery for Humidity
+    if (doc.containsKey("hu")) {
+        
+
+    client.publish(
+        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/humidity/config").c_str(),
+        (String("{"
+        "\"name\":\"Humidity\","
+        "\"device_class\":\"humidity\","
+        "\"unit_of_measurement\":\"%\","
+        "\"icon\":\"mdi:water-percent\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/humidity" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_hu" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+    // auto-discovery for Moisture
+    if (doc.containsKey("mo")) {
+        
+
+    client.publish(
+        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/moisture/config").c_str(),
+        (String("{"
+        "\"name\":\"Moisture\","
+        "\"device_class\":\"Moisture\","
+        "\"unit_of_measurement\":\"%\","
+        "\"icon\":\"mdi:water-percent\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/moisture" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_mo" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+
+    // auto-discovery for Buttons
+    if (doc.containsKey("bt")) {
+        
+
+    client.publish(
+        (String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/button/config").c_str(),
+        (String("{"
+        "\"name\":\"Button\","
+        "\"device_class\":\"none\","
+        "\"icon\":\"mdi:button\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/button" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_bt" +"\","
+        "\"payload_on\":\"on\","
+        "\"payload_off\":\"off\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+
+    // auto-discovery for Atmospheric pressure
+    if (doc.containsKey("atm")) {
+        
+
+    client.publish(
+        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/pressure/config").c_str(),
+        (String("{"
+        "\"name\":\"Pressure\","
+        "\"device_class\":\"atmospheric_pressure\","
+        "\"unit_of_measurement\":\"kPa\","
+        "\"icon\":\"mdi:button\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/pressure" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_atm" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+
+    // auto-discovery for CO2
+    if (doc.containsKey("cd")) {
+
+    client.publish(
+        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/co2/config").c_str(),
+        (String("{"
+        "\"name\":\"Carbon Dioxide\","
+        "\"device_class\":\"carbon_dioxide\","
+        "\"unit_of_measurement\":\"ppm\","
+        "\"icon\":\"mdi:molecule-co2\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/co2" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_cd" +"\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+    // auto-discovery for door
+    if (doc.containsKey("dr")) {
+
+    client.publish(
+        (String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/door/config").c_str(),
+        (String("{"
+        "\"name\":\"Door\","
+        "\"device_class\":\"door\","
+        "\"icon\":\"mdi:door\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/door" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_door" +"\","
+        "\"payload_on\":\"on\","
+        "\"payload_off\":\"off\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+
+    // auto-discovery for window
+    if (doc.containsKey("wd")) {
+
+    client.publish(
+        (String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/window/config").c_str(),
+        (String("{"
+        "\"name\":\"Window\","
+        "\"device_class\":\"window\","
+        "\"icon\":\"mdi:window-closed\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str()  + "/window" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_window" +"\","
+        "\"payload_on\":\"on\","
+        "\"payload_off\":\"off\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+
+    // auto-discovery for vibration
+    if (doc.containsKey("vb")) {
+
+    client.publish(
+        (String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/vibration/config").c_str(),
+        (String("{"
+        "\"name\":\"Vibration\","
+        "\"device_class\":\"vibration\","
+        "\"icon\":\"mdi:vibrate\","
+        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/vibration" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_vibration" +"\","
+        "\"payload_on\":\"on\","
+        "\"payload_off\":\"off\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+
+ /////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
     // Publish the value
     client.publish(topic.c_str(), value.c_str(), MQTT_RETAIN);
   } else {
-    //Serial.print("No ");
-    //Serial.print(key);
-    //Serial.println(" in JSON");
+
+    //Serial.print("KEY not faund in JSON");
+
   }
 }
+
+
+
+
 
 void updateMessagesAndPublish(const JsonDocument& doc) {
   // Only proceed if GATEWAY_KEY matches
@@ -206,67 +614,24 @@ void updateMessagesAndPublish(const JsonDocument& doc) {
   publishIfKeyExists(doc, "r", "/rssi");
   publishIfKeyExists(doc, "b", "/batt");
   publishIfKeyExists(doc, "v", "/volt");
-  publishIfKeyExists(doc, "a", "/amp");
-  publishIfKeyExists(doc, "l", "/lux");
+  publishIfKeyExists(doc, "pw", "/current");
+  publishIfKeyExists(doc, "l", "/lx");
   publishIfKeyExists(doc, "m", "/motion");
   publishIfKeyExists(doc, "w", "/weight");
   publishIfKeyExists(doc, "s", "/state");
   publishIfKeyExists(doc, "t", "/tmp");
   publishIfKeyExists(doc, "t2", "/tmp2");
-  publishIfKeyExists(doc, "ah", "/airhum");
-  publishIfKeyExists(doc, "sh", "/soilhum");
+  publishIfKeyExists(doc, "hu", "/humidity");
+  publishIfKeyExists(doc, "mo", "/moisture");
   publishIfKeyExists(doc, "rw", "/row");
-  publishIfKeyExists(doc, "p1", "/button1");
-  publishIfKeyExists(doc, "p2", "/button2");
-  publishIfKeyExists(doc, "p3", "/button3");
-  publishIfKeyExists(doc, "p4", "/button4");
+  publishIfKeyExists(doc, "bt", "/button");
+  publishIfKeyExists(doc, "atm", "/pressur");
+  publishIfKeyExists(doc, "cd", "/co2");
+  publishIfKeyExists(doc, "dr", "/door");
+  publishIfKeyExists(doc, "wd", "/window");
+  publishIfKeyExists(doc, "vb", "/vibration");
+
   // Add other keys as needed...
-
- ///////////////////////// auto-discovery ////////////////////////////////
-
-/* Json Structur
-
- id  - Node Name - received_json_message.id
- r   - RSSI - received_json_message.r
- b   - Battery Voltage - received_json_message.b
- v   - Voltage
- a   - Amps
- l   - Lux
- m   - Motion (on | off)
- w   - Weight
- s   - State (on | off)
- e   - Encoder
- t   - Temperature
- t2  - Second Temperature
- ah  - Air Humidity
- sh  - Soile Humidity
- rw  - Row Data
- p1  - Push Button State (on | off)
- p2  - Push Button State (on | off)
- p3  - Push Button State (on | off)
- p4  - Push Button State (on | off)
-
- */
-
-  // auto-discovery node "device" confige example, one for every device, changing dinamicaly
-    client.publish(
-      (String(BINARY_SENSOR_TOPIC)+ String(received_json_message.id).c_str() + String("/config")).c_str(),
-      (String("{\"name\":null,\"device_class\":\"door\",\"icon\":\"mdi:mailbox\",\"state_topic\":\"") + String(SENSOR_TOPIC)+ String(received_json_message.id).c_str() + String("\",\"unique_id\":\"")+ String(received_json_message.id).c_str() + String("\",\"device\":{\"identifiers\":\"")+ String(received_json_message.id).c_str() + String("\",\"name\":\"") + String(received_json_message.id).c_str() + String("\",\"mdl\":\"")+ String(received_json_message.id).c_str() + String("\",\"mf\":\"PricelessToolkit\"}}")).c_str(),
-      MQTT_RETAIN);
-
- // auto-discovery for "b" Battery changing dinamicaly String(SENSOR_TOPIC)+ String(received_json_message.id).c_str() + String("/batt")).c_str()
-   if (doc.containsKey("b")) {
-    //...
-  }
-
-   // auto-discovery for "r" RSSI changing dinamicaly String(SENSOR_TOPIC)+ String(received_json_message.id).c_str() + String("/rssi")).c_str()
-   if (doc.containsKey("r")) {
-    //...
-  }
-
-  //...
-
- /////////////////////////////////////////////////////////////////////////////
 
 
 }
@@ -282,6 +647,28 @@ void parseIncomingPacket(String serialrow) {
   }
 
   updateMessagesAndPublish(doc);
+}
+
+
+
+void diag(){
+
+  // Sending diagnostic data every 1m
+  if (millis() -  lastDiagTimer >= diagTimer) { 
+    long rssi = WiFi.RSSI();
+ 
+    // send auto-discovery message for CapiBridge Diagnostic rssi
+    client.publish(
+      (String(CAPIBRIDGE_RSSI_TOPIC) + String("/config")).c_str(),
+      (String("{\"name\":\"RSSI\",\"unit_of_measurement\":\"dBm\",\"device_class\":\"signal_strength\",\"icon\":\"mdi:signal\",\"entity_category\":\"diagnostic\",\"state_topic\":\"") + String(CAPIBRIDGE_RSSI_TOPIC) + String("\",\"unique_id\":\"capibridge_rssi\",\"device\":{\"identifiers\":[\"capibridge\"],\"name\":\"CapiBridge\",\"mdl\":\"CapiBridge\",\"mf\":\"PriclessToolkit\"}}")).c_str(),
+      MQTT_RETAIN);
+
+    // Sends RSSI value
+    client.publish("homeassistant/sensor/CapiBridge/rssi", String(rssi).c_str(), MQTT_RETAIN);
+
+      lastDiagTimer = millis();
+    }
+
 }
 
 
@@ -305,7 +692,7 @@ void loop() {
       LedStartTime = millis();                    // LED Timer Start
     }
     Serial.print("LoRa Message: ");
-    Serial.println(recv);
+    
     if (client.connected()) {
       //////////////// Inserting RSSI ///////////////////
       // Prepare the string to insert
@@ -316,20 +703,25 @@ void loop() {
       if (position != -1) {
           // Insert the new key-value pair before the last closing brace
           recv = recv.substring(0, position) + insertString + recv.substring(position);
+          Serial.println(recv);
       }
       
       // Print the modified string
       //Serial.println(recv);
       // Parsing modified JSON string
       parseIncomingPacket(recv);
-
+      
     }
    }
 
   if (millis() -  LedStartTime >= 100) {       // Turning OFF LED_PIN after 100ms
       digitalWrite(LED_PIN, HIGH);             // HIGH = LED is OFF    
     }
-       
+
+  if (client.connected()) {
+      diag();
+    }
+
   if (!client.connected()) {
       reconnect();
     }
