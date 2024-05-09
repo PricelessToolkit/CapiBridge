@@ -157,7 +157,7 @@ ____________
 > [!WARNING]
 > ### 🔥Connect antennas before USB to avoid transmitter burnout.🔥
 
-1. Open ESP1.ino sketch and configure config.h file
+1. Open ESP1.ino sketch and configure config.h file see https://github.com/PricelessToolkit/CapiBridge?tab=readme-ov-file#esp1ino-sketch-configuration
 2. On CapiBridge change the UART Switch position to "ESP1"
 3. Select board type, COM port and... see the screenshot below
 
