@@ -150,9 +150,9 @@ ____________
 
 ____________
 
-## Home Assistant Configuration
+## Home Assistant Zero Configuration
 > [!NOTE]
-> For now CapiBridge doesn't have MQTT auto-discovery, so we need to create MQTT sensors in configuration.yaml, below you will find examples for each supported sensor topics. it's important to note that you can add a new topic in the gateway by adding for example `publishIfKeyExists(doc, "sp", "/speed");` in `ESP1.ino` file.
+> With MQTT-Autodiscovery, there's no need to configure anything in Home Assistant manually. Any sensor or node that sends a JSON string with special keys ('k' for the gateway private key and 'id' for the node name, both of which are mandatory) will be automatically discovered. Refer to the table below for details, and of course, full ESP32 examples are provided.
 
 
 ## Sensor / Node Configuration
