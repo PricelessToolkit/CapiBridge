@@ -10,46 +10,6 @@
 # CapiBridge 🛒 [Buy Assembled CapiBridge KIT](https://www.facebook.com/groups/pricelesstoolkit)
 CapiBridge is an open-source gateway between different communication technologies LoRa, ESP-NOW, and WiFi by receiving JSON strings from LoRa, and ESP-NOW and publishing them to an MQTT server. It automatically separates the data into dynamic topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all projects, focusing on simplicity and unified protocol handling.
 
-Example of a JSON String Sent by a Sensor:
-
-```json
-{
-  "k": "abcd",
-  "id": "ESP32",
-  "b": "3.8v",
-  "rw": "Test123"
-}
-```
-
-Full Suported List
-
-
-| Key   | Description               | Unit of Measurement | Required |
-|-------|---------------------------|---------------------|----------|
-| `k`   | Private Gateway key       | -                   | Yes      |
-| `id`  | Node Name                 | -                   | Yes      |
-| `r`   | RSSI                      | dBm                 | No       |
-| `b`   | Battery Voltage           | Volts               | No       |
-| `v`   | Volts                     | Volts               | No       |
-| `pw`  | Current                   | mAh                 | No       |
-| `l`   | Luminance                 | lux                 | No       |
-| `m`   | Motion                    | Binary on/off       | No       |
-| `w`   | Weight                    | grams               | No       |
-| `s`   | State                     | Anything            | No       |
-| `t`   | Temperature               | °C                  | No       |
-| `t2`  | Temperature               | °C                  | No       |
-| `hu`  | Humidity                  | %                   | No       |
-| `mo`  | Moisture                  | %                   | No       |
-| `rw`  | ROW                       | Anything            | No       |
-| `bt`  | Button                    | Binary on/off       | No       |
-| `atm` | Pressure                  | kph                 | No       |
-| `cd`  | Dioxyde de carbone        | ppm                 | No       |
-| `dr`  | Door                      | Binary on/off       | No       |
-| `wd`  | Window                    | Binary on/off       | No       |
-| `vb`  | Vibration                 | Binary on/off       | No       |
-
-
-
 
 ### _Contributors_
 
@@ -193,3 +153,45 @@ ____________
 ## Home Assistant Configuration
 > [!NOTE]
 > For now CapiBridge doesn't have MQTT auto-discovery, so we need to create MQTT sensors in configuration.yaml, below you will find examples for each supported sensor topics. it's important to note that you can add a new topic in the gateway by adding for example `publishIfKeyExists(doc, "sp", "/speed");` in `ESP1.ino` file.
+
+
+## Sensor / Node Configuration
+
+Example of a JSON String Sent by a Sensor/Node:
+
+```json
+{
+  "k": "abcd",
+  "id": "ESP32",
+  "b": "3.8v",
+  "rw": "Test123"
+}
+```
+
+Full Suported List
+
+
+| Key   | Description               | Unit of Measurement | Required |
+|-------|---------------------------|---------------------|----------|
+| `k`   | Private Gateway key       | -                   | Yes      |
+| `id`  | Node Name                 | -                   | Yes      |
+| `r`   | RSSI                      | dBm                 | No       |
+| `b`   | Battery Voltage           | Volts               | No       |
+| `v`   | Volts                     | Volts               | No       |
+| `pw`  | Current                   | mAh                 | No       |
+| `l`   | Luminance                 | lux                 | No       |
+| `m`   | Motion                    | Binary on/off       | No       |
+| `w`   | Weight                    | grams               | No       |
+| `s`   | State                     | Anything            | No       |
+| `t`   | Temperature               | °C                  | No       |
+| `t2`  | Temperature               | °C                  | No       |
+| `hu`  | Humidity                  | %                   | No       |
+| `mo`  | Moisture                  | %                   | No       |
+| `rw`  | ROW                       | Anything            | No       |
+| `bt`  | Button                    | Binary on/off       | No       |
+| `atm` | Pressure                  | kph                 | No       |
+| `cd`  | Dioxyde de carbone        | ppm                 | No       |
+| `dr`  | Door                      | Binary on/off       | No       |
+| `wd`  | Window                    | Binary on/off       | No       |
+| `vb`  | Vibration                 | Binary on/off       | No       |
+
