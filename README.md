@@ -179,7 +179,7 @@ JSON String Sent by a Sensor/Node:
 }
 ```
 
-The easiest method for forming JSON without using ArduinoJson.h library and transmitting it: 'Example from MailBox sensor'
+The easiest method for forming JSON without using ArduinoJson.h library and transmitting it: `Example from MailBox sensor`
 
 ```c
 #define NODE_NAME "mbox"
