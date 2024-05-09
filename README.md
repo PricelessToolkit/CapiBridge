@@ -12,31 +12,32 @@ CapiBridge is an open-source gateway between different communication technologie
 
 Example of a JSON String Sent by a Sensor: `{\"k\":\"key\",\"id\":\"node_name\",\"b\":\"3.2v\",\"rw\":\"row_string\"}`
 Full Suported List
-```
-"k" - Key (Private Gateway key "ab") - REQUIRED!!!
-"id" - Key (Node Name "ESP32") - REQUIRED!!!
-"r" - RSSI (Unit of measurement: dbm)
-"b" - Battery Voltage (Unit of measurement: Volts)
-"v" - Volts (Unit of measurement: Volts)
-"pw" - Current (Unit of measurement: mAh)
-"l" - Luminance (Unit of measurement: lux)
-"m" - Motion (Binary on | off)
-"w" - Weight (Unit of measurement: grams)
-"s" - State (Unit of measurement: None/ROW)
-"t" - Temperature (Unit of measurement: °C)
-"t2" - Temperature (Unit of measurement: °C)
-"hu" - Humidity (Unit of measurement: %)
-"mo" - Moisture (Unit of measurement: %)
-"rw" - ROW (Value: Text & Number)
-"bt" - Button (Binary on | off)
-"atm" - Pressure (Unit of measurement: kph)
-"cd" - Dioxyde de carbone (Unit of measurement: ppm)
-"dr" - Door (Binary on | off)
-"wd" - Window (Binary on | off)
-"vb" - Vibration (Binary on | off)
 
- you can add new keys very easily
-```
+
+| Key   | Description               | Unit of Measurement | Required |
+|-------|---------------------------|---------------------|----------|
+| `k`   | Private Gateway key       | -                   | Yes      |
+| `id`  | Node Name                 | -                   | Yes      |
+| `r`   | RSSI                      | dBm                 | No       |
+| `b`   | Battery Voltage           | Volts               | No       |
+| `v`   | Volts                     | Volts               | No       |
+| `pw`  | Current                   | mAh                 | No       |
+| `l`   | Luminance                 | lux                 | No       |
+| `m`   | Motion                    | Binary on/off       | No       |
+| `w`   | Weight                    | grams               | No       |
+| `s`   | State                     | Anything            | No       |
+| `t`   | Temperature               | °C                  | No       |
+| `t2`  | Temperature               | °C                  | No       |
+| `hu`  | Humidity                  | %                   | No       |
+| `mo`  | Moisture                  | %                   | No       |
+| `rw`  | ROW                       | Anything            | No       |
+| `bt`  | Button                    | Binary on/off       | No       |
+| `atm` | Pressure                  | kph                 | No       |
+| `cd`  | Dioxyde de carbone        | ppm                 | No       |
+| `dr`  | Door                      | Binary on/off       | No       |
+| `wd`  | Window                    | Binary on/off       | No       |
+| `vb`  | Vibration                 | Binary on/off       | No       |
+
 
 
 
