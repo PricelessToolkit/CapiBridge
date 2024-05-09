@@ -158,13 +158,13 @@ ____________
 > ### 🔥Connect the antenna first to prevent damage to the transmitter.🔥
 
 1. Open ESP1.ino sketch and configure config.h file see https://github.com/PricelessToolkit/CapiBridge?tab=readme-ov-file#esp1ino-sketch-configuration
-2. On the CapiBridge change the UART Switch position to "ESP1".
+2. Set the UART switch on the CapiBridge to the 'ESP1' position.
 3. Select board type, COM port and... see the screenshot below.
 
 <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/board_config.jpg"/>
 
 4. Click Upload to board.
-5. On the CapiBridge change the UART Switch position to "ESP2".
+5. Set the UART switch on the CapiBridge to the 'ESP2' position.
 6. Open ESP2.ino sketch.
 7.  Click Upload to board.
 
