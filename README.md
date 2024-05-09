@@ -180,14 +180,16 @@ JSON String Sent by a Sensor/Node:
 }
 ```
 
-The simplest way to create JSON String without the ArduinoJson.h library and transmit it via LoRa. `Example from MailBox sensor`
+The simplest way to create JSON String without the ArduinoJson.h library and transmit it via LoRa. `Example from MailBox sensor` Other examples can be found in the Node folder.
 
 ```c
 #define NODE_NAME "mbox"
 float volts = analogReadEnh(PIN_PB4, 12) * (1.1 / 4096) * (30 + 10) / 10;
 
+// Send a message via LoRa
 LoRa.print("{\"k\":\"ab\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + volts + "}");  
 ```
+
 
 Full Suported List
 
