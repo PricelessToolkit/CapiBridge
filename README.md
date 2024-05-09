@@ -7,35 +7,8 @@
 
 ## Work in progress... project is not ready
 
-# CapiBridge 🛒 [Buy Assembled CapiBridge KIT](https://www.facebook.com/groups/pricelesstoolkit)
+# 🛒 [Buy Assembled CapiBridge KIT](https://www.facebook.com/groups/pricelesstoolkit)
 CapiBridge is an open-source gateway between different communication technologies LoRa, ESP-NOW, and WiFi by receiving JSON strings from LoRa, and ESP-NOW and publishing them to an MQTT server. It automatically separates the data into dynamic topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all projects, focusing on simplicity and unified protocol handling.
-
-Example of a JSON String Sent by a Sensor: `{\"k\":\"key\",\"id\":\"node_name\",\"b\":\"3.2v\",\"rw\":\"row_string\"}`
-
-```
- k   - Gateway Key  - Required
- id  - Node Name    - Required
- b   - Battery Voltage
- v   - Voltage
- a   - Amps
- l   - Lux
- m   - Motion
- w   - Weight
- s   - State
- e   - Encoder
- t   - Temperature
- t2  - Second Temperature
- ah  - Air Humidity
- sh  - Soile Humidity
- rw  - Row Data
- p1  - Push Button State
- p2  - Push Button State
- p3  - Push Button State
- p4  - Push Button State
-
- you can add new keys very easily
-```
-
 
 
 ### _Contributors_
@@ -46,17 +19,30 @@ ____________
 
 
 ## Specifications
-- Based on 2x ESP32-C3 and LoRa Module
-- ESP1 Free GPIOs
-  - IO7, IO10
-- ESP2 Free GPIOs
-  - IO10, IO3, IO1, IO0, IO4, IO5, IO6, IO7
+- 1x LoRa Module 868 or 433MHz
+- 2x ESP32-C3
+ - ESP1 Free GPIOs
+   - IO7, IO10
+ - ESP2 Free GPIOs
+   - IO10, IO3, IO1, IO0, IO4, IO5, IO6, IO7
 - Power Pins 5V, 3.3V, GND
-- USB-C with auto reset "for programming"
-- UART switch for selecting ESP1|ESP2
+- USB-C with auto reset
+- UART switch for selecting ( ESP1 | ESP2 )
 - Buttons for flashing and reset
+- Debug LEDs
+  - USB - TX, RX
+  - ESP1 to ESP2 - TX, RX
+  - One LED for LoRa
+  - One LED for ESP-NOW
 
 ____________
+
+## Schematic
+<details>
+  <summary>View schematic. Click here</summary>
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/capibridge_schematic.jpg"/>
+</details>
+
 
 <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/3D_open3.JPG"/>
 
@@ -71,13 +57,7 @@ ____________
 
 ____________
 
-## Schematic
-<details>
-  <summary>View schematic. Click here</summary>
-<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/capibridge_schematic.jpg"/>
-</details>
 
-____________
 
 ## Arduino IDE Configuration
 
@@ -86,7 +66,10 @@ ____________
 
 ### Used Arduino Libraries
 ```c
+#include <Arduino.h>
+#include <SPI.h>
 #include <LoRa.h>
+#include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 ```
@@ -111,7 +94,7 @@ ____________
 
 
 
-## CapiBridge ESP1 configuration
+## CapiBridge ESP1.ino sketch configuration
 
 > [!NOTE]
 > For `ESP1.ino`
@@ -171,12 +154,55 @@ ____________
 
 ____________
 
-## CapiBridge ESP2 configuration
+## CapiBridge ESP2.ino sketch configuration
 > [!NOTE]
 > ESP2 for `ESPNOW` requires no initial setup, once the sketch is uploaded, it automatically prints the MAC address in the serial monitor for integration with ESPNOW nodes/sensors.
 
 ____________
 
-## Home Assistant Configuration
+## Home Assistant Zero Configuration
 > [!NOTE]
-> For now CapiBridge doesn't have MQTT auto-discovery, so we need to create MQTT sensors in configuration.yaml, below you will find examples for each supported sensor topics. it's important to note that you can add a new topic in the gateway by adding for example `publishIfKeyExists(doc, "sp", "/speed");` in `ESP1.ino` file.
+> With MQTT-Autodiscovery, there's no need to configure anything in Home Assistant manually. Any sensor or node that sends a JSON string with special keys `('k' for the gateway private key and 'id' for the node name, both of which are mandatory)` will be automatically discovered. Refer to the table below for details, and of course, full ESP32 examples are provided.
+
+
+## Sensor / Node Example
+
+JSON String Sent by a Sensor/Node:
+
+```json
+{
+  "k": "abcd",
+  "id": "ESP32",
+  "b": "3.8",
+  "rw": "Test123",
+  "dr": "on"
+}
+```
+
+Full Suported List
+
+
+| Key   | Description               | Unit of Measurement | Required |
+|-------|---------------------------|---------------------|----------|
+| `k`   | Private Gateway key       | -                   | Yes      |
+| `id`  | Node Name                 | -                   | Yes      |
+| `r`   | RSSI                      | dBm                 | No       |
+| `b`   | Battery Voltage           | Volts               | No       |
+| `v`   | Volts                     | Volts               | No       |
+| `pw`  | Current                   | mAh                 | No       |
+| `l`   | Luminance                 | lux                 | No       |
+| `m`   | Motion                    | Binary on/off       | No       |
+| `w`   | Weight                    | grams               | No       |
+| `s`   | State                     | Anything            | No       |
+| `t`   | Temperature               | °C                  | No       |
+| `t2`  | Temperature 2             | °C                  | No       |
+| `hu`  | Humidity                  | %                   | No       |
+| `mo`  | Moisture                  | %                   | No       |
+| `rw`  | ROW                       | Anything            | No       |
+| `bt`  | Button                    | Binary on/off       | No       |
+| `atm` | Pressure                  | kph                 | No       |
+| `cd`  | Dioxyde de carbone        | ppm                 | No       |
+| `dr`  | Door                      | Binary on/off       | No       |
+| `wd`  | Window                    | Binary on/off       | No       |
+| `vb`  | Vibration                 | Binary on/off       | No       |
+
