@@ -8,7 +8,7 @@
 ## Work in progress... project is not ready
 
 # 🛒 [Buy Assembled CapiBridge KIT](https://www.facebook.com/groups/pricelesstoolkit)
-CapiBridge is an open-source gateway between different communication technologies LoRa, ESP-NOW, and WiFi by receiving JSON strings from LoRa, and ESP-NOW and publishing them to an MQTT server. It automatically separates the data into dynamic topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all projects, focusing on simplicity and unified protocol handling.
+CapiBridge is an open-source gateway for low-power devices. It supports various communication technologies including LoRa, ESP-NOW, and WiFi. The gateway receives JSON strings from LoRa and ESP-NOW devices and publishes them to an MQTT server. It automatically separates the JSON string into dynamic MQTT topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all projects, focusing on simplicity and unified protocol handling.
 
 
 ### _Contributors_
@@ -49,7 +49,7 @@ ____________
 ## Before you start
 
 > [!WARNING]
-> ### 🔥Connect antennas before power to avoid transmitter burnout.🔥
+> ### 🔥Connect all antennas first to prevent damage to the transmitter.🔥
 
 > [!IMPORTANT]
 > If you're new to Arduino-related matters, please refrain from asking basic questions like "how to install Arduino IDE". There are already plenty of excellent tutorials available on the internet. If you encounter any issues to which you can't find the answer -> [Here](https://www.google.com/) , feel free to join our [Facebook Group](https://www.facebook.com/groups/pricelesstoolkit) or open a new [discussion](https://github.com/PricelessToolkit/CapiBridge/discussions) topic in the dedicated tab. Remember that providing detailed information about the problem will help me offer more effective assistance. More information equals better help!
@@ -64,7 +64,7 @@ ____________
 > [!NOTE]
 > Arduino IDE 2.3.0
 
-### Used Arduino Libraries
+#### Used Arduino Libraries
 ```c
 #include <Arduino.h>
 #include <SPI.h>
@@ -72,6 +72,7 @@ ____________
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <esp_now.h>
 ```
 
 CapiBridge is based on ESP32-C3 so If you are using ESP32 for the first time, you need To install the ESP32 board and all libraries, in your Arduino IDE.
@@ -80,13 +81,6 @@ CapiBridge is based on ESP32-C3 so If you are using ESP32 for the first time, yo
 - Open the Boards Manager. Go to Tools > Board > Boards Manager and Search for ESP32 and press the install button for the “esp32 by Expressif Systems“
 - Open Library Manager search for PubSubClient and press the install button, do the same for other libraries, or, just copy uploaded libraries `content of lib folder` to your Arduino library folder. for Windows users, folder is located at `Documents\Arduino\libraries`
 
-
-For board configuration in IDE, see the screenshot below
-<details>
-  <summary>Board config Screenshot</summary>
-<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/board_config.jpg"/>
-</details>
-
 ____________
 
 
@@ -94,14 +88,14 @@ ____________
 
 
 
-## CapiBridge ESP1.ino sketch configuration
+## ESP1.ino sketch configuration
 
 > [!NOTE]
 > For `ESP1.ino`
 > all configurations are done in the file `config.h`
 
 
-### Gateway Key
+#### Gateway Key
 
 > [!IMPORTANT]
 > Unique key within the JSON to differentiate your signal from others. Must match the key in Nodes/Sensors.
@@ -112,7 +106,7 @@ ____________
 
 
 
-### WIFI and MQTT Server Configuration
+#### WIFI and MQTT Server Configuration
 ```c
 #define WIFI_SSID "your_wifi_ssid"
 #define WIFI_PASSWORD "your_wifi_passwd"
@@ -121,7 +115,7 @@ ____________
 #define MQTT_SERVER "your_mqtt_broker_address"
 #define MQTT_PORT 1883
 ```
-### LoRa Configuration
+#### LoRa Configuration
 
 > [!IMPORTANT]
 > LoRa configuration must match the configuration in Nodes/Sensors.
@@ -154,10 +148,27 @@ ____________
 
 ____________
 
-## CapiBridge ESP2.ino sketch configuration
+## ESP2.ino sketch configuration
 > [!NOTE]
 > ESP2 for `ESPNOW` requires no initial setup, once the sketch is uploaded, it automatically prints the MAC address in the serial monitor for integration with ESPNOW nodes/sensors.
+____________
 
+## Uploading Code to CapiBridge
+> [!WARNING]
+> ### 🔥Connect the antenna first to prevent damage to the transmitter.🔥
+
+1. Open ESP1.ino sketch and configure config.h file see https://github.com/PricelessToolkit/CapiBridge?tab=readme-ov-file#esp1ino-sketch-configuration
+2. Set the UART switch on the CapiBridge to the 'ESP1' position.
+3. Select board type, COM port and... see the screenshot below.
+
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/board_config.jpg"/>
+
+4. Click Upload.
+5. Set the UART switch on the CapiBridge to the 'ESP2' position.
+6. Open ESP2.ino sketch.
+7. Click Upload.
+
+Everything will be ready shortly; the CapiBridge RSSI entity should appear in the Home Assistant MQTT devices list within a minute.
 ____________
 
 ## Home Assistant Zero Configuration
@@ -165,9 +176,7 @@ ____________
 > With MQTT-Autodiscovery, there's no need to configure anything in Home Assistant manually. Any sensor or node that sends a JSON string with special keys `('k' for the gateway private key and 'id' for the node name, both of which are mandatory)` will be automatically discovered. Refer to the table below for details, and of course, full ESP32 examples are provided.
 
 
-## Sensor / Node Example
-
-JSON String Sent by a Sensor/Node:
+## JSON String Sent by a Sensor/Node:
 
 ```json
 {
@@ -178,7 +187,6 @@ JSON String Sent by a Sensor/Node:
   "dr": "on"
 }
 ```
-
 Full Suported List
 
 
@@ -205,4 +213,22 @@ Full Suported List
 | `dr`  | Door                      | Binary on/off       | No       |
 | `wd`  | Window                    | Binary on/off       | No       |
 | `vb`  | Vibration                 | Binary on/off       | No       |
+
+
+## Sensor / Node Example
+The simplest way to create JSON String without the ArduinoJson.h library and transmit it via LoRa. `Example from MailBox sensor`
+
+```c
+#define NODE_NAME "mbox"
+float volts = analogReadEnh(PIN_PB4, 12) * (1.1 / 4096) * (30 + 10) / 10;
+
+// Send a message via LoRa
+LoRa.print("{\"k\":\"ab\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + volts + "}");  
+```
+
+## Troubleshooting
+If your DIY sensor/node can't be seen in Home Assistant, here are a few hints that will help you find the problem.
+
+1. Connect CapiBridge to PC with switch position selected ESP1, open Arduino IDE Serial monitor "Speed 115200 baud" and check received JSON strings for errors.
+2. Download MQTT Explorer and connect to your MQTT server. Check the `homeassistant/sensor/Your_Node_Name` topic for any errors.
 
