@@ -167,7 +167,8 @@ Example of a JSON String Sent by a Sensor/Node:
   "k": "abcd",
   "id": "ESP32",
   "b": "3.8",
-  "rw": "Test123"
+  "rw": "Test123",
+  "dr": "on"
 }
 ```
 
