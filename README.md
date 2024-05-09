@@ -27,7 +27,7 @@ ____________
    - IO10, IO3, IO1, IO0, IO4, IO5, IO6, IO7
 - Power Pins 5V, 3.3V, GND
 - USB-C with auto reset
-- UART switch for selecting ESP1|ESP2
+- UART switch for selecting ( ESP1 | ESP2 )
 - Buttons for flashing and reset
 - Debug LEDs
   - USB - TX, RX
