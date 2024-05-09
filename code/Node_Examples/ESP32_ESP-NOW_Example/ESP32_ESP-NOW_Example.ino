@@ -7,11 +7,11 @@
 // Global Variables
 StaticJsonDocument<256> doc;
 uint8_t receiverAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // For broadcasting
-String node_name = "esp32"; // Your node name
+String node_name = "ESP32"; // Your node name
 String gateway_key = "ab";     // Your gateway key
 
-String Vbattery = "3.2";
-
+String Vbattery = "3.3";
+String amp = "0.55";
 
 // Structure to send data
 typedef struct struct_message {
@@ -64,7 +64,7 @@ void loop() {
     r   - RSSI
     b   - Battery Voltage
     v   - Voltage
-    a   - Amps
+    am   - Amps
     l   - Lux
     m   - Motion (on | off)
     w   - Weight
@@ -72,8 +72,8 @@ void loop() {
     e   - Encoder
     t   - Temperature
     t2  - Second Temperature
-    ah  - Air Humidity
-    sm  - Soil Moisture
+    hu  - Air Humidity
+    mo  - Soil Moisture
     rw  - Row Data
     p1  - Push Button State (on | off)
     p2  - Push Button State (on | off)
@@ -86,7 +86,19 @@ void loop() {
     doc["k"] = gateway_key;
     doc["id"] = node_name;
     doc["b"] = Vbattery;
-    doc["rw"] = "test";
+    doc["rw"] = "Test";
+    doc["v"] = "12";
+    doc["pw"] = "0.35";
+    doc["hu"] = "16";
+    doc["mo"] = "83";
+    doc["w"] = "79";
+    doc["dr"] = "on";
+    doc["wd"] = "off";
+    doc["s"] = "xxx";
+    doc["l"] = "125";
+    doc["t2"] = "26";
+    doc["t"] = "9.9";
+    doc["vb"] = "on";
 
     // Serialize JSON document into the struct
     size_t jsonSize = serializeJson(doc, myData.json, sizeof(myData.json));
