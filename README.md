@@ -72,6 +72,7 @@ ____________
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <esp_now.h>
 ```
 
 CapiBridge is based on ESP32-C3 so If you are using ESP32 for the first time, you need To install the ESP32 board and all libraries, in your Arduino IDE.
@@ -179,7 +180,7 @@ JSON String Sent by a Sensor/Node:
 }
 ```
 
-The easiest method for forming JSON without using ArduinoJson.h library and transmitting it: `Example from MailBox sensor`
+The simplest way to create JSON String without the ArduinoJson.h library and transmit it via LoRa. `Example from MailBox sensor`
 
 ```c
 #define NODE_NAME "mbox"
