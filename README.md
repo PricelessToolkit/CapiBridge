@@ -87,7 +87,7 @@ ____________
 
 
 
-## CapiBridge ESP1 configuration
+## CapiBridge ESP1.ino sketch configuration
 
 > [!NOTE]
 > For `ESP1.ino`
@@ -147,7 +147,7 @@ ____________
 
 ____________
 
-## CapiBridge ESP2 configuration
+## CapiBridge ESP2.ino sketch configuration
 > [!NOTE]
 > ESP2 for `ESPNOW` requires no initial setup, once the sketch is uploaded, it automatically prints the MAC address in the serial monitor for integration with ESPNOW nodes/sensors.
 
