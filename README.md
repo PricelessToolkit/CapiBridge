@@ -226,5 +226,9 @@ float volts = analogReadEnh(PIN_PB4, 12) * (1.1 / 4096) * (30 + 10) / 10;
 LoRa.print("{\"k\":\"ab\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + volts + "}");  
 ```
 
+## Troubleshooting
+If your DIY sensor/node can't be seen in Home Assistant, here are a few hints that will help you find the problem.
 
+1. Connect CapiBridge to PC with switch position selected ESP1, open Arduino IDE Serial monitor "Speed 115200 baud" and check received JSON strings for errors.
+2. Download MQTT Explorer and connect to your MQTT server. Check the `homeassistant/sensor/Your_Node_Name` topic for any errors.
 
