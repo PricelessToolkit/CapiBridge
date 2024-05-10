@@ -187,7 +187,7 @@ ____________
   "dr": "on"
 }
 ```
-Full Suported List
+Full Suported MQTT-Autodiscovery List
 
 
 | Key   | Description               | Unit of Measurement | Required |
