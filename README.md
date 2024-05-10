@@ -163,7 +163,7 @@ ____________
 
 <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/board_config.jpg"/>
 
-4. Click Upload.
+4. Click Upload and wait until the upload is done.
 5. Set the UART switch on the CapiBridge to the 'ESP2' position.
 6. Open ESP2.ino sketch.
 7. Click Upload.
