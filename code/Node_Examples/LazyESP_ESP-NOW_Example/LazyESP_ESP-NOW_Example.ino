@@ -71,26 +71,29 @@ void loop() {
 
     /*
 
-    k   - Gateway Key
-    id  - Node Name
-    r   - RSSI
-    b   - Battery Voltage
-    v   - Voltage
-    a   - Amps
-    l   - Lux
-    m   - Motion (on | off)
-    w   - Weight
-    s   - State (on | off)
-    e   - Encoder
-    t   - Temperature
-    t2  - Second Temperature
-    ah  - Air Humidity
-    sm  - Soil Moisture
-    rw  - Row Data
-    p1  - Push Button State (on | off)
-    p2  - Push Button State (on | off)
-    p3  - Push Button State (on | off)
-    p4  - Push Button State (on | off)
+| Key   | Description               | Unit of Measurement | Required |
+|-------|---------------------------|---------------------|----------|
+| `k`   | Private Gateway key       | -                   | Yes      |
+| `id`  | Node Name                 | -                   | Yes      |
+| `r`   | RSSI                      | dBm                 | No       |
+| `b`   | Battery Voltage           | Volts               | No       |
+| `v`   | Volts                     | Volts               | No       |
+| `pw`  | Current                   | mAh                 | No       |
+| `l`   | Luminance                 | lux                 | No       |
+| `m`   | Motion                    | Binary on/off       | No       |
+| `w`   | Weight                    | grams               | No       |
+| `s`   | State                     | Anything            | No       |
+| `t`   | Temperature               | °C                  | No       |
+| `t2`  | Temperature 2             | °C                  | No       |
+| `hu`  | Humidity                  | %                   | No       |
+| `mo`  | Moisture                  | %                   | No       |
+| `rw`  | ROW                       | Anything            | No       |
+| `bt`  | Button                    | Binary on/off       | No       |
+| `atm` | Pressure                  | kph                 | No       |
+| `cd`  | Dioxyde de carbone        | ppm                 | No       |
+| `dr`  | Door                      | Binary on/off       | No       |
+| `wd`  | Window                    | Binary on/off       | No       |
+| `vb`  | Vibration                 | Binary on/off       | No       |
 
     */
 
