@@ -168,6 +168,31 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
 /* Json Structur
   Example of received data from LoRa directly or from Second ESP "Serial1" {\"k\":\"ab\",\"id\":\"node2\",\"r\":\"115\",\"b\":\"3.2\",\"rw\":\"smile\"}
 
+
+  | Key   | Description               | Unit of Measurement | Required |
+|-------|---------------------------|---------------------|----------|
+| `k`   | Private Gateway key       | -                   | Yes      |
+| `id`  | Node Name                 | -                   | Yes      |
+| `r`   | RSSI                      | dBm                 | No       |
+| `b`   | Battery Voltage           | Volts               | No       |
+| `v`   | Volts                     | Volts               | No       |
+| `pw`  | Current                   | mAh                 | No       |
+| `l`   | Luminance                 | lux                 | No       |
+| `m`   | Motion                    | Binary on/off       | No       |
+| `w`   | Weight                    | grams               | No       |
+| `s`   | State                     | Anything            | No       |
+| `t`   | Temperature               | °C                  | No       |
+| `t2`  | Temperature 2             | °C                  | No       |
+| `hu`  | Humidity                  | %                   | No       |
+| `mo`  | Moisture                  | %                   | No       |
+| `rw`  | ROW                       | Anything            | No       |
+| `bt`  | Button                    | Binary on/off       | No       |
+| `atm` | Pressure                  | kph                 | No       |
+| `cd`  | Dioxyde de carbone        | ppm                 | No       |
+| `dr`  | Door                      | Binary on/off       | No       |
+| `wd`  | Window                    | Binary on/off       | No       |
+| `vb`  | Vibration                 | Binary on/off       | No       |
+
  */
 
 
@@ -450,7 +475,7 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
       }
 
 
-    // auto-discovery for Buttons
+    // auto-discovery for Button
     if (doc.containsKey("bt")) {
         
 
