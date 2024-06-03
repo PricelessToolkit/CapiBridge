@@ -196,8 +196,8 @@ Full Suported MQTT-Autodiscovery List
 
 | Key   | Description               | Unit of Measurement | Required |
 |-------|---------------------------|---------------------|----------|
-| `k`   | Private Gateway key       | -                   | Yes      |
-| `id`  | Node Name                 | -                   | Yes      |
+| `k`   | Private Gateway key       | string              | Yes      |
+| `id`  | Node Name                 | string              | Yes      |
 | `r`   | RSSI                      | dBm                 | No       |
 | `b`   | Battery Voltage           | Volts               | No       |
 | `v`   | Volts                     | Volts               | No       |
