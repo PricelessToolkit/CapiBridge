@@ -5,13 +5,10 @@
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U6U2QLAF8)
 
-## Work in progress... project is not ready
-
 CapiBridge is an open-source gateway for low-power devices. It supports various communication technologies including LoRa, ESP-NOW, and WiFi. The gateway receives JSON strings from LoRa and ESP-NOW devices and publishes them to an MQTT server. It automatically separates the JSON string into dynamic MQTT topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all projects, focusing on simplicity and unified protocol handling.
 
 # 🛒 Where to buy
--  Link [CapiBridge + Antenna KIT](https://www.pricelesstoolkit.com/en/)
--  Link [Enclosure](https://www.pricelesstoolkit.com/en/)
+-  Link [CapiBridge Full KIT or only Mainboard](https://www.pricelesstoolkit.com/en/)
 
 ____________
 
@@ -196,8 +193,8 @@ Full Suported MQTT-Autodiscovery List
 
 | Key   | Description               | Unit of Measurement | Required |
 |-------|---------------------------|---------------------|----------|
-| `k`   | Private Gateway key       | -                   | Yes      |
-| `id`  | Node Name                 | -                   | Yes      |
+| `k`   | Private Gateway key       |  -                  | Yes      |
+| `id`  | Node Name                 |  -                  | Yes      |
 | `r`   | RSSI                      | dBm                 | No       |
 | `b`   | Battery Voltage           | Volts               | No       |
 | `v`   | Volts                     | Volts               | No       |
