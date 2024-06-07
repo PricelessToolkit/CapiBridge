@@ -160,6 +160,7 @@ ____________
 
 1. Open ESP1.ino sketch and configure config.h file see https://github.com/PricelessToolkit/CapiBridge?tab=readme-ov-file#esp1ino-sketch-configuration
 2. Set the UART switch on the CapiBridge to the 'ESP1' position.
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/swich.jpg"/>
 3. Select board type, COM port and... see the screenshot below.
 
 <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/board_config.jpg"/>
@@ -167,8 +168,8 @@ ____________
 4. Click Upload and wait until the upload is done.
 5. Set the UART switch on the CapiBridge to the 'ESP2' position.
 <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/swich.jpg"/>
-7. Open ESP2.ino sketch.
-8. Click Upload.
+6. Open ESP2.ino sketch.
+7. Click Upload.
 
 Everything will be ready shortly; the CapiBridge RSSI entity should appear in the Home Assistant MQTT devices list within a minute or two.
 ____________
