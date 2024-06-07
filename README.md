@@ -8,14 +8,14 @@
 CapiBridge is an open-source gateway for low-power devices. It supports various communication technologies including LoRa, ESP-NOW, and WiFi. The gateway receives JSON strings from LoRa and ESP-NOW devices and publishes them to an MQTT server. It automatically separates the JSON string into dynamic MQTT topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all projects, focusing on simplicity and unified protocol handling.
 
 # 🛒 Where to buy
--  Link [CapiBridge Full KIT or only Mainboard](https://www.pricelesstoolkit.com/en/)
+-  [CapiBridge Full KIT or only Mainboard](https://www.pricelesstoolkit.com/en/)
   
   If you prefer a DIY approach instead of buying a ready-made device, here are the links for antennas and cables.
 
- - Link [2.4Ghz Antenna + Cable](https://s.click.aliexpress.com/e/_DE0sJ7N)
- - Link [Cable UFL to SMA](https://s.click.aliexpress.com/e/_Dnee0tV)
- - Link [Antenna 433 MHz SMA male](https://s.click.aliexpress.com/e/_Dm2X9vv)
- - Link [Antenna 868 MHz SMA male](https://s.click.aliexpress.com/e/_Dczm4y7)
+ - [2.4Ghz Antenna + Cable](https://s.click.aliexpress.com/e/_DE0sJ7N)
+ - [Cable UFL to SMA](https://s.click.aliexpress.com/e/_Dnee0tV)
+ - [Antenna 433 MHz SMA male](https://s.click.aliexpress.com/e/_Dm2X9vv)
+ - [Antenna 868 MHz SMA male](https://s.click.aliexpress.com/e/_Dczm4y7)
 
 
 
@@ -89,7 +89,7 @@ CapiBridge is based on ESP32-C3 so If you are using ESP32 for the first time, yo
 - In your Arduino IDE, go to File> Preferences.
 - Enter `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json` into the “Additional Boards Manager URLs” field. Then, click the “OK” button
 - Open the Boards Manager. Go to Tools > Board > Boards Manager and Search for ESP32 and press the install button for the “esp32 by Expressif Systems“
-- Open Library Manager search for PubSubClient and press the install button, do the same for other libraries, or, just copy uploaded libraries `content of lib folder` to your Arduino library folder. for Windows users, folder is located at `Documents\Arduino\libraries`
+- Open Library Manager search for PubSubClient and press the install button, do the same for other libraries.
 
 ____________
 
