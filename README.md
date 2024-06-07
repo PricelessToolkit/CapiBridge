@@ -9,6 +9,15 @@ CapiBridge is an open-source gateway for low-power devices. It supports various 
 
 # 🛒 Where to buy
 -  Link [CapiBridge Full KIT or only Mainboard](https://www.pricelesstoolkit.com/en/)
+  
+  If you prefer a DIY approach instead of buying a ready-made device, here are the links for antennas and cables.
+
+ - Link [2.4Ghz Antenna + Cable](https://s.click.aliexpress.com/e/_DE0sJ7N)
+ - Link [Cable UFL to SMA](https://s.click.aliexpress.com/e/_Dnee0tV)
+ - Link [Antenna 433 MHz SMA male](https://s.click.aliexpress.com/e/_Dm2X9vv)
+ - Link [Antenna 868 MHz SMA male](https://s.click.aliexpress.com/e/_Dczm4y7)
+
+
 
 ____________
 
