@@ -102,7 +102,7 @@ ____________
 > Unique key within the JSON to differentiate your signal from others. Must match the key in Nodes/Sensors.
 
 ```c
-#define GATEWAY_KEY "ab"
+#define GATEWAY_KEY "xy"
 ```
 
 
@@ -181,7 +181,7 @@ ____________
 
 ```json
 {
-  "k": "abcd",
+  "k": "xy",
   "id": "ESP32",
   "b": "3.8",
   "rw": "Test123",
@@ -224,7 +224,7 @@ The simplest way to create JSON String without the ArduinoJson.h library and tra
 float volts = analogReadEnh(PIN_PB4, 12) * (1.1 / 4096) * (30 + 10) / 10;
 
 // Send a message via LoRa
-LoRa.print("{\"k\":\"ab\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + volts + "}");  
+LoRa.print("{\"k\":\"xy\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + volts + "}");  
 ```
 
 ## Troubleshooting
