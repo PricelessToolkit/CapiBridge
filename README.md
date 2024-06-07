@@ -166,10 +166,11 @@ ____________
 
 4. Click Upload and wait until the upload is done.
 5. Set the UART switch on the CapiBridge to the 'ESP2' position.
-6. Open ESP2.ino sketch.
-7. Click Upload.
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/swich.jpg"/>
+7. Open ESP2.ino sketch.
+8. Click Upload.
 
-Everything will be ready shortly; the CapiBridge RSSI entity should appear in the Home Assistant MQTT devices list within a minute.
+Everything will be ready shortly; the CapiBridge RSSI entity should appear in the Home Assistant MQTT devices list within a minute or two.
 ____________
 
 ## Home Assistant Zero Configuration
