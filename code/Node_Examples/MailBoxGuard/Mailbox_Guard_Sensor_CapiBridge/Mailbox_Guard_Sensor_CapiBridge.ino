@@ -87,9 +87,9 @@ void loop() {
 
 
 
-    LoRa.print("{\"k\":\"ab\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + volts + "}");   
+    LoRa.print("{\"k\":\"xy\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + volts + "}");   
 #else
-    LoRa.print("{\"k\":\"ab\",\"id\":\"" + String(NODE_NAME) + "\"}");
+    LoRa.print("{\"k\":\"xy\",\"id\":\"" + String(NODE_NAME) + "\"}");
 #endif
     LoRa.endPacket();
     delay(10);

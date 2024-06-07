@@ -8,7 +8,7 @@
 StaticJsonDocument<256> doc;
 uint8_t receiverAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // For broadcasting
 String node_name = "ESP32"; // Your node name
-String gateway_key = "ab";     // Your gateway key
+String gateway_key = "xy";     // Your gateway key
 
 String Vbattery = "3.3";
 String amp = "0.55";

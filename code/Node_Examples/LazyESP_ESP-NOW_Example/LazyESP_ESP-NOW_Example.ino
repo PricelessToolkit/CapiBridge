@@ -12,7 +12,7 @@
 StaticJsonDocument<256> doc;
 uint8_t receiverAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // For broadcasting
 String node_name = "LazyESP"; // Your node name
-String gateway_key = "ab";     // Your gateway key
+String gateway_key = "xy";     // Your gateway key
 
 // EEPROM object with I2C address for 24LC01
 I2C_eeprom ee(0x50, I2C_DEVICESIZE_24LC01);
