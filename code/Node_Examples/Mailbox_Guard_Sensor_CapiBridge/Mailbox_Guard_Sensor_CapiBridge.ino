@@ -14,8 +14,9 @@
 #define SYNC_WORD 0xF3
 #define PREAMBLE_LENGTH 6
 #define TX_POWER 20
-#define BAND 433E6  // 433E6 / 868E6 / 915E6
+#define BAND 868E6  // 433E6 / 868E6 / 915E6
 #define NODE_NAME "mbox"
+#define GATEWAY_KEY "xy" // must match CapiBridge's key
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -49,47 +50,9 @@ void loop() {
     LoRa.beginPacket();
 #if TRANSMIT_BATTERY_VOLTAGE
     float volts = analogReadEnh(PIN_PB4, 12) * (1.1 / 4096) * (30 + 10) / 10;
-    
-
-
-
-
-
-    /*
-
-| Key   | Description               | Unit of Measurement | Required |
-|-------|---------------------------|---------------------|----------|
-| `k`   | Private Gateway key       | -                   | Yes      |
-| `id`  | Node Name                 | -                   | Yes      |
-| `r`   | RSSI                      | dBm                 | No       |
-| `b`   | Battery Voltage           | Volts               | No       |
-| `v`   | Volts                     | Volts               | No       |
-| `pw`  | Current                   | mAh                 | No       |
-| `l`   | Luminance                 | lux                 | No       |
-| `m`   | Motion                    | Binary on/off       | No       |
-| `w`   | Weight                    | grams               | No       |
-| `s`   | State                     | Anything            | No       |
-| `t`   | Temperature               | °C                  | No       |
-| `t2`  | Temperature 2             | °C                  | No       |
-| `hu`  | Humidity                  | %                   | No       |
-| `mo`  | Moisture                  | %                   | No       |
-| `rw`  | ROW                       | Anything            | No       |
-| `bt`  | Button                    | Binary on/off       | No       |
-| `atm` | Pressure                  | kph                 | No       |
-| `cd`  | Dioxyde de carbone        | ppm                 | No       |
-| `dr`  | Door                      | Binary on/off       | No       |
-| `wd`  | Window                    | Binary on/off       | No       |
-| `vb`  | Vibration                 | Binary on/off       | No       |
-
-    */
-
-
-
-
-
-    LoRa.print("{\"k\":\"xy\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + volts + "}");   
+    LoRa.print("{\"k\":\"" + String(GATEWAY_KEY) + "\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + volts + "}");
 #else
-    LoRa.print("{\"k\":\"xy\",\"id\":\"" + String(NODE_NAME) + "\"}");
+    LoRa.print("{\"k\":\"" + String(GATEWAY_KEY) + "\",\"id\":\"" + String(NODE_NAME) + "\"}");
 #endif
     LoRa.endPacket();
     delay(10);
