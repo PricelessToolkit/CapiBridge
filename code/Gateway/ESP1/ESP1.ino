@@ -1,3 +1,8 @@
+// Bugfixes and breaking Changes
+// 15.06.2024 - Battery in percent
+
+
+
 #include <Arduino.h>
 #include "config.h"
 #include <SPI.h>
@@ -33,7 +38,7 @@ struct json_msg {
   String k;
   String id;
   int16_t r;
-  float b;
+  int16_t b;
   int16_t v;
   float pw;
   int16_t l;
@@ -174,7 +179,7 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
 | `k`   | Private Gateway key       | -                   | Yes      |
 | `id`  | Node Name                 | -                   | Yes      |
 | `r`   | RSSI                      | dBm                 | No       |
-| `b`   | Battery Voltage           | Volts               | No       |
+| `b`   | Percentage of battery     | %                   | No       |
 | `v`   | Volts                     | Volts               | No       |
 | `pw`  | Current                   | mAh                 | No       |
 | `l`   | Luminance                 | lux                 | No       |
@@ -205,8 +210,8 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
         (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/batt/config").c_str(),
         (String("{"
         "\"name\":\"Battery\","
-        "\"device_class\":\"voltage\","
-        "\"unit_of_measurement\":\"V\","
+        "\"device_class\":\"battery\","
+        "\"unit_of_measurement\":\"%\","
         "\"icon\":\"mdi:battery\","
         "\"entity_category\":\"diagnostic\","
         "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/batt" + "\","
@@ -238,7 +243,6 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
       MQTT_RETAIN);
 
       }
-
 
     
     // auto-discovery for Row data TEXT
@@ -635,7 +639,7 @@ void updateMessagesAndPublish(const JsonDocument& doc) {
   // Assuming GATEWAY_KEY matched and "id" is always required
   received_json_message.id = doc.containsKey("id") ? doc["id"].as<String>() : "";
 
-  // Example usage for different keys
+  // Example usage for different keys | /Topics
   publishIfKeyExists(doc, "r", "/rssi");
   publishIfKeyExists(doc, "b", "/batt");
   publishIfKeyExists(doc, "v", "/volt");
