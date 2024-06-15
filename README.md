@@ -216,7 +216,7 @@ Full Suported MQTT-Autodiscovery List
 | `id`  | Node Name                 |  -                  | Yes      |
 | `r`   | RSSI                      | dBm                 | No       |
 | `b`   | Battery percent           | %                   | No       |
-| `v`   | Volts                     | Volts               | No       |
+| `v`   | voltage                   | Volts               | No       |
 | `pw`  | Current                   | mAh                 | No       |
 | `l`   | Luminance                 | lux                 | No       |
 | `m`   | Motion                    | Binary on/off       | No       |
