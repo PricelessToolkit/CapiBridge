@@ -240,6 +240,7 @@ The simplest way to create JSON String without the ArduinoJson.h library and tra
 
 ```c
 #define NODE_NAME "mbox"
+#define GATEWAY_KEY "xy" // must match CapiBridge's key
 
 float volts = analogReadEnh(PIN_PB4, 12) * (1.1 / 4096) * (30 + 10) / 10;
 // Calculate percentage
