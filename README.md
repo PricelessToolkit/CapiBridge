@@ -215,7 +215,7 @@ Full Suported MQTT-Autodiscovery List
 | `k`   | Private Gateway key       |  -                  | Yes      |
 | `id`  | Node Name                 |  -                  | Yes      |
 | `r`   | RSSI                      | dBm                 | No       |
-| `b`   | Percentage of battery     | %                   | No       |
+| `b`   | Battery percent           | %                   | No       |
 | `v`   | Volts                     | Volts               | No       |
 | `pw`  | Current                   | mAh                 | No       |
 | `l`   | Luminance                 | lux                 | No       |
