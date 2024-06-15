@@ -1,4 +1,4 @@
-// Example code for LazyESP board
+// Example code for ESP32 board
 
 #include <esp_now.h>
 #include <WiFi.h>
@@ -10,8 +10,6 @@ uint8_t receiverAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // For broadca
 String node_name = "ESP32"; // Your node name
 String gateway_key = "xy";     // Your gateway key
 
-String Vbattery = "3.3";
-String amp = "0.55";
 
 // Structure to send data
 typedef struct struct_message {
@@ -57,38 +55,11 @@ void loop() {
     doc.clear();
 
 
-    /*
-
-| Key   | Description               | Unit of Measurement | Required |
-|-------|---------------------------|---------------------|----------|
-| `k`   | Private Gateway key       | -                   | Yes      |
-| `id`  | Node Name                 | -                   | Yes      |
-| `r`   | RSSI                      | dBm                 | No       |
-| `b`   | Battery Voltage           | Volts               | No       |
-| `v`   | Volts                     | Volts               | No       |
-| `pw`  | Current                   | mAh                 | No       |
-| `l`   | Luminance                 | lux                 | No       |
-| `m`   | Motion                    | Binary on/off       | No       |
-| `w`   | Weight                    | grams               | No       |
-| `s`   | State                     | Anything            | No       |
-| `t`   | Temperature               | °C                  | No       |
-| `t2`  | Temperature 2             | °C                  | No       |
-| `hu`  | Humidity                  | %                   | No       |
-| `mo`  | Moisture                  | %                   | No       |
-| `rw`  | ROW                       | Anything            | No       |
-| `bt`  | Button                    | Binary on/off       | No       |
-| `atm` | Pressure                  | kph                 | No       |
-| `cd`  | Dioxyde de carbone        | ppm                 | No       |
-| `dr`  | Door                      | Binary on/off       | No       |
-| `wd`  | Window                    | Binary on/off       | No       |
-| `vb`  | Vibration                 | Binary on/off       | No       |
-
-    */
 
     // Populate JSON document
     doc["k"] = gateway_key;
     doc["id"] = node_name;
-    doc["b"] = Vbattery;
+    doc["b"] = "99";
     doc["rw"] = "Test";
     doc["v"] = "12";
     doc["pw"] = "0.35";

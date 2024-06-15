@@ -65,43 +65,18 @@ void loop() {
     float Vout = (raw * 3.3) / 4095.0;
     float Vbattery = Vout * 10.19; // Adjust for voltage divider
 
+    // Calculate percentage
+    float percentage = ((Vbattery - 3.2) / (4.2 - 3.2)) * 100;
+    percentage = constrain(percentage, 0, 100);
+
     // Clear previous data
     doc.clear();
-
-
-    /*
-
-| Key   | Description               | Unit of Measurement | Required |
-|-------|---------------------------|---------------------|----------|
-| `k`   | Private Gateway key       | -                   | Yes      |
-| `id`  | Node Name                 | -                   | Yes      |
-| `r`   | RSSI                      | dBm                 | No       |
-| `b`   | Battery Voltage           | Volts               | No       |
-| `v`   | Volts                     | Volts               | No       |
-| `pw`  | Current                   | mAh                 | No       |
-| `l`   | Luminance                 | lux                 | No       |
-| `m`   | Motion                    | Binary on/off       | No       |
-| `w`   | Weight                    | grams               | No       |
-| `s`   | State                     | Anything            | No       |
-| `t`   | Temperature               | °C                  | No       |
-| `t2`  | Temperature 2             | °C                  | No       |
-| `hu`  | Humidity                  | %                   | No       |
-| `mo`  | Moisture                  | %                   | No       |
-| `rw`  | ROW                       | Anything            | No       |
-| `bt`  | Button                    | Binary on/off       | No       |
-| `atm` | Pressure                  | kph                 | No       |
-| `cd`  | Dioxyde de carbone        | ppm                 | No       |
-| `dr`  | Door                      | Binary on/off       | No       |
-| `wd`  | Window                    | Binary on/off       | No       |
-| `vb`  | Vibration                 | Binary on/off       | No       |
-
-    */
 
     // Populate JSON document
     doc["k"] = gateway_key;
     doc["id"] = node_name;
-    doc["b"] = String(Vbattery, 2);
-    doc["rw"] = "test";
+    doc["b"] = int(percentage);
+    doc["rw"] = powerOnCount;
 
     // Serialize JSON document into the struct
     size_t jsonSize = serializeJson(doc, myData.json, sizeof(myData.json));
