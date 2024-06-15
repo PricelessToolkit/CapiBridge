@@ -49,7 +49,10 @@ ____________
   - ESP1 to ESP2 - TX, RX
   - One LED for LoRa
   - One LED for ESP-NOW
-
+ 
+  
+> [!IMPORTANT]
+> A high-quality phone charger should be used to ensure a stable 5V power supply.
 ____________
 
 ## Schematic
