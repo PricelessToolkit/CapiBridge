@@ -215,7 +215,7 @@ Full Suported MQTT-Autodiscovery List
 | `k`   | Private Gateway key       |  -                  | Yes      |
 | `id`  | Node Name                 |  -                  | Yes      |
 | `r`   | RSSI                      | dBm                 | No       |
-| `b`   | Battery Voltage           | Volts               | No       |
+| `b`   | Percentage of battery     | %                   | No       |
 | `v`   | Volts                     | Volts               | No       |
 | `pw`  | Current                   | mAh                 | No       |
 | `l`   | Luminance                 | lux                 | No       |
@@ -251,4 +251,7 @@ If your DIY sensor/assembly is not showing up in Home Assistant, here are some t
 1. Check if the node LoRa settings are the same as the LoRa Gateway config, like Frequency, and spreading factor...
 2. Connect CapiBridge to PC with switch position selected ESP1, open Arduino IDE Serial monitor "Speed 115200 baud" and check received JSON strings for errors.
 3. Download MQTT Explorer and connect to your MQTT server. Check the `homeassistant/sensor/Your_Node_Name` topic for any errors.
+
+## Bugfixes and breaking Changes
+15.06.2024 - Publishing battery in percent
 
