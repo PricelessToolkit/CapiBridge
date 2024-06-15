@@ -202,7 +202,7 @@ ____________
 {
   "k": "xy",
   "id": "ESP32",
-  "b": "3.8",
+  "b": "99",
   "rw": "Test123",
   "dr": "on"
 }
@@ -240,10 +240,14 @@ The simplest way to create JSON String without the ArduinoJson.h library and tra
 
 ```c
 #define NODE_NAME "mbox"
-float volts = analogReadEnh(PIN_PB4, 12) * (1.1 / 4096) * (30 + 10) / 10;
 
-// Send a message via LoRa
-LoRa.print("{\"k\":\"xy\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + volts + "}");  
+float volts = analogReadEnh(PIN_PB4, 12) * (1.1 / 4096) * (30 + 10) / 10;
+// Calculate percentage
+float percentage = ((volts - 3.2) / (4.2 - 3.2)) * 100;
+percentage = constrain(percentage, 0, 100);
+int intPercentage = (int)percentage;
+	
+LoRa.print("{\"k\":\"" + String(GATEWAY_KEY) + "\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + intPercentage + "}");
 ```
 
 ## Troubleshooting
