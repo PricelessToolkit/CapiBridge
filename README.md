@@ -189,6 +189,8 @@ ____________
 7. Click Upload.
 
 Everything will be ready shortly; the CapiBridge RSSI entity should appear in the Home Assistant MQTT devices list within a minute or two.
+> [!NOTE]
+> Set the UART switch back to ESP1 to see received JSON messages.
 ____________
 
 ## Home Assistant Zero Configuration
