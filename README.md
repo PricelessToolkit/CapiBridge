@@ -17,10 +17,10 @@ ____________
   
   If you prefer a DIY approach instead of buying a ready-made device, here are the links for antennas and cables.
 
- - [2.4Ghz Antenna + Cable](https://s.click.aliexpress.com/e/_DE0sJ7N)
- - [Cable UFL to SMA](https://s.click.aliexpress.com/e/_Dnee0tV)
- - [Antenna 433 MHz SMA male](https://s.click.aliexpress.com/e/_Dm2X9vv)
- - [Antenna 868 MHz SMA male](https://s.click.aliexpress.com/e/_Dczm4y7)
+ - 2.4Ghz Antenna + Cable https://s.click.aliexpress.com/e/_DE0sJ7N
+ - Cable UFL to SMA https://s.click.aliexpress.com/e/_Dnee0tV
+ - Antenna 433 MHz SMA male https://s.click.aliexpress.com/e/_Dm2X9vv
+ - Antenna 868 MHz SMA male https://s.click.aliexpress.com/e/_Dczm4y7
 
 
 
