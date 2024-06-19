@@ -17,10 +17,10 @@ ____________
   
   If you prefer a DIY approach instead of buying a ready-made device, here are the links for antennas and cables.
 
- - [2.4Ghz Antenna + Cable](https://s.click.aliexpress.com/e/_DE0sJ7N)
- - [Cable UFL to SMA](https://s.click.aliexpress.com/e/_Dnee0tV)
- - [Antenna 433 MHz SMA male](https://s.click.aliexpress.com/e/_Dm2X9vv)
- - [Antenna 868 MHz SMA male](https://s.click.aliexpress.com/e/_Dczm4y7)
+ - 2.4Ghz Antenna + Cable https://s.click.aliexpress.com/e/_DE0sJ7N
+ - Cable UFL to SMA https://s.click.aliexpress.com/e/_Dnee0tV
+ - Antenna 433 MHz SMA male https://s.click.aliexpress.com/e/_Dm2X9vv
+ - Antenna 868 MHz SMA male https://s.click.aliexpress.com/e/_Dczm4y7
 
 
 
@@ -185,8 +185,10 @@ ____________
 4. Click Upload and wait until the upload is done.
 5. Set the UART switch on the CapiBridge to the 'ESP2' position.
 <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/swich.jpg"/>
+
 6. Open ESP2.ino sketch.
 7. Click Upload.
+8. Set the UART switch back to the ESP1 position to see received JSON messages.
 
 Everything will be ready shortly; the CapiBridge RSSI entity should appear in the Home Assistant MQTT devices list within a minute or two.
 ____________
