@@ -51,7 +51,7 @@ void loop() {
 #if TRANSMIT_BATTERY_VOLTAGE
     float volts = analogReadEnh(PIN_PB4, 12) * (1.1 / 4096) * (30 + 10) / 10;
     // Calculate percentage
-    float percentage = ((volts - 3.2) / (4.2 - 3.2)) * 100;
+    float percentage = ((volts - 3.2) / (4.15 - 3.2)) * 100;
     percentage = constrain(percentage, 0, 100);
 	int intPercentage = (int)percentage;
 	
