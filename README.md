@@ -80,7 +80,7 @@ ____________
 ## Arduino IDE Configuration
 
 > [!NOTE]
-> Arduino IDE 2.3.0
+> Arduino IDE 2.3.2
 
 #### Used Arduino Libraries
 ```c
