@@ -49,13 +49,11 @@ ____________
 > A high-quality phone charger should be used to ensure a stable 5V power supply.
 ____________
 
-### _Contributors_
+## 📣 Updates, Bugfixes, and breaking Changes
+15.06.2024 - Publishing battery in percent
 
 > [!NOTE]
 >  If you're ready to contribute to the project, your support would be greatly appreciated. Due to time constraints, I may not be able to quickly verify new "features" or completely new "code" functionality, so please create a new code/script in the new folder.
-
-## 📣 Updates, Bugfixes, and breaking Changes
-15.06.2024 - Publishing battery in percent
 ____________
 
 
