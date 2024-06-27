@@ -26,12 +26,6 @@ ____________
 
 ____________
 
-### _Contributors_
-
-> [!NOTE]
->  If you're ready to contribute to the project, your support would be greatly appreciated. Due to time constraints, I may not be able to quickly verify new "features" or completely new "code" functionality, so please create a new code/script in the new folder.
-____________
-
 
 ## Specifications
 - 1x LoRa Module 868 or 433MHz
@@ -54,6 +48,17 @@ ____________
 > [!IMPORTANT]
 > A high-quality phone charger should be used to ensure a stable 5V power supply.
 ____________
+
+### _Contributors_
+
+> [!NOTE]
+>  If you're ready to contribute to the project, your support would be greatly appreciated. Due to time constraints, I may not be able to quickly verify new "features" or completely new "code" functionality, so please create a new code/script in the new folder.
+
+## 📣 Updates, Bugfixes, and breaking Changes
+15.06.2024 - Publishing battery in percent
+____________
+
+
 
 ## Schematic
 <details>
@@ -259,6 +264,4 @@ If your DIY sensor/assembly is not showing up in Home Assistant, here are some t
 2. Connect CapiBridge to PC with switch position selected ESP1, open Arduino IDE Serial monitor "Speed 115200 baud" and check received JSON strings for errors.
 3. Download MQTT Explorer and connect to your MQTT server. Check the `homeassistant/sensor/Your_Node_Name` topic for any errors.
 
-## Bugfixes and breaking Changes
-15.06.2024 - Publishing battery in percent
 
