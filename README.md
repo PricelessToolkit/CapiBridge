@@ -50,8 +50,8 @@ ____________
 ____________
 
 ## 📣 Updates, Bugfixes, and Breaking Changes
-15.06.2024 - Publishing battery in percent
-15.07.2024 - Work in progress "Implementing CRC for ESP-NOW"
+- 15.06.2024 - Publishing battery in percent
+- 15.07.2024 - Work in progress "Implementing CRC for ESP-NOW"
 
 > [!NOTE]
 >  If you're ready to contribute to the project, your support would be greatly appreciated. Due to time constraints, I may not be able to quickly verify new "features" or completely new "code" functionality, so please create a new code/script in the new folder.
