@@ -7,24 +7,18 @@
 
 CapiBridge is an open-source one-way gateway for low-power devices. It supports various communication technologies including LoRa, ESP-NOW, and WiFi. The gateway receives JSON strings from LoRa and ESP-NOW DIY devices and publishes them to an MQTT server. It automatically separates the JSON string into dynamic MQTT topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all your DIY projects, focusing on simplicity and unified protocol handling.
 
-
 [<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/video.jpg"/>](https://www.youtube.com/watch?v=mJt_VbMeRAU)
 
 ____________
 
 ## 🛒 Where to buy http://www.PricelessToolkit.com
-  
-  If you prefer a DIY approach instead of buying a ready-made device, here are the links for antennas and cables.
 
- - 2.4Ghz Antenna + Cable https://s.click.aliexpress.com/e/_DE0sJ7N
- - Cable UFL to SMA https://s.click.aliexpress.com/e/_Dnee0tV
- - Antenna 433 MHz SMA male https://s.click.aliexpress.com/e/_Dm2X9vv
- - Antenna 868 MHz SMA male https://s.click.aliexpress.com/e/_Dczm4y7
-
-
+## 🚀 Sensors that work out of the box with CapiBridge.
+ - [Mailbox Guard](https://github.com/PricelessToolkit/MailBoxGuard) LoRa MailBox sensor
+ - [SOILSENS-V5W](https://github.com/PricelessToolkit/SOILSENS-V5W) Soil moisture sensor
 
 ____________
-
+  
 
 ## Specifications
 - 1x LoRa Module 868 or 433MHz
@@ -48,6 +42,7 @@ ____________
 > A high-quality phone charger should be used to ensure a stable 5V power supply.
 ____________
 
+
 ## 📣 Updates, Bugfixes, and Breaking Changes
 - 15.07.2024 - Work in progress "Implementing CRC for ESP-NOW"
 - 15.06.2024 - Publishing battery in percent.
@@ -56,7 +51,8 @@ ____________
 >  If you're ready to contribute to the project, your support would be greatly appreciated. Due to time constraints, I may not be able to quickly verify new "features" or completely new "code" functionality, so please create a new code/script in the new folder.
 ____________
 
-
+# Do you want to assemble it yourself?
+This project is open-source, allowing you to assemble CapiBridge on your own. To simplify this process, I've provided an "Interactive HTML Boom File" located in the PCB folder. This interactive file helps you identify where to solder each component and polarity, reducing the chances of errors to a minimum. But if you don't feel confident in assembling it yourself, you can always opt to purchase a pre-assembled board from my Shop https://www.pricelesstoolkit.com
 
 ## Schematic
 <details>
@@ -64,20 +60,25 @@ ____________
 <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/capibridge_schematic.jpg"/>
 </details>
 
+____________
 
-<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/3D_open3.JPG"/>
+  Links for antennas and cables.
+
+ - 2.4Ghz Antenna + Cable https://s.click.aliexpress.com/e/_DE0sJ7N
+ - Cable UFL to SMA https://s.click.aliexpress.com/e/_Dnee0tV
+ - Antenna 433 MHz SMA male https://s.click.aliexpress.com/e/_Dm2X9vv
+ - Antenna 868 MHz SMA male https://s.click.aliexpress.com/e/_Dczm4y7
+
+____________
 
 ## Before you start
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/3D_open3.JPG"/>
 
 > [!WARNING]
 > ### 🔥Connect all antennas first to prevent damage to the transmitter.🔥
 
 > [!IMPORTANT]
 > If you're new to Arduino-related matters, please refrain from asking basic questions like "how to install Arduino IDE". There are already plenty of excellent tutorials available on the internet. If you encounter any issues to which you can't find the answer -> [Here](https://www.google.com/) , feel free to join our [Facebook Group](https://www.facebook.com/groups/pricelesstoolkit) or open a new [discussion](https://github.com/PricelessToolkit/CapiBridge/discussions) topic in the dedicated tab. Remember that providing detailed information about the problem will help me offer more effective assistance. More information equals better help!
-
-
-____________
-
 
 
 ## Arduino IDE Configuration
