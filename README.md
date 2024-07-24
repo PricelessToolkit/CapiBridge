@@ -12,8 +12,7 @@ CapiBridge is an open-source one-way gateway for low-power devices. It supports 
 
 ____________
 
-# 🛒 Where to buy
--  [CapiBridge Full KIT or only Mainboard](https://www.pricelesstoolkit.com/en/)
+## 🛒 Where to buy http://www.PricelessToolkit.com
   
   If you prefer a DIY approach instead of buying a ready-made device, here are the links for antennas and cables.
 
