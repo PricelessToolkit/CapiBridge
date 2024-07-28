@@ -44,7 +44,7 @@ ____________
 
 
 ## 📣 Updates, Bugfixes, and Breaking Changes
-- 15.07.2024 - Work in progress "Implementing CRC for ESP-NOW"
+- 28.07.2024 - Binary sensors topics and Motion sensor autodiscovery
 - 15.06.2024 - Publishing battery in percent.
 
 > [!NOTE]
