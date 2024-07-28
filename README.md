@@ -44,7 +44,7 @@ ____________
 
 
 ## 📣 Updates, Bugfixes, and Breaking Changes
-- 28.07.2024 - Binary sensors topics and Motion sensor autodiscovery
+- 28.07.2024 - Binary sensors topics and Motion sensor autodiscovery.
 - 15.06.2024 - Publishing battery in percent.
 
 > [!NOTE]
