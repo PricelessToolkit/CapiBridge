@@ -350,26 +350,6 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
       }
 
 
-    // auto-discovery for Motion
-    if (doc.containsKey("m")) {
-        
-
-    client.publish(
-        (String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/motion/config").c_str(),
-        (String("{"
-        "\"name\":\"Motion\","
-        "\"device_class\":\"motion\","
-        "\"icon\":\"mdi:motion\","
-        "\"state_topic\":\"") + String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/motion" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_m" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
 
     // auto-discovery for Weight
     if (doc.containsKey("w")) {
@@ -544,6 +524,31 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
 
       }
 
+
+
+    // auto-discovery for Motion
+    if (doc.containsKey("m")) {
+        
+
+    client.publish(
+        (String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/motion/config").c_str(),
+        (String("{"
+        "\"name\":\"Motion\","
+        "\"device_class\":\"motion\","
+        "\"icon\":\"mdi:motion\","
+        "\"state_topic\":\"") + String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/motion" + "\","
+        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_m" +"\","
+        "\"payload_on\":\"on\","
+        "\"payload_off\":\"off\","
+        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
+        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
+        "\"mdl\":\"" + String(received_json_message.id).c_str() +
+        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
+        MQTT_RETAIN);
+
+      }
+
+
     // auto-discovery for door
     if (doc.containsKey("dr")) {
 
@@ -553,7 +558,7 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
         "\"name\":\"Door\","
         "\"device_class\":\"door\","
         "\"icon\":\"mdi:door\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/door" + "\","
+        "\"state_topic\":\"") + String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/door" + "\","
         "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_door" +"\","
         "\"payload_on\":\"on\","
         "\"payload_off\":\"off\","
@@ -575,7 +580,7 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
         "\"name\":\"Window\","
         "\"device_class\":\"window\","
         "\"icon\":\"mdi:window-closed\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str()  + "/window" + "\","
+        "\"state_topic\":\"") + String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str()  + "/window" + "\","
         "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_window" +"\","
         "\"payload_on\":\"on\","
         "\"payload_off\":\"off\","
@@ -597,7 +602,7 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
         "\"name\":\"Vibration\","
         "\"device_class\":\"vibration\","
         "\"icon\":\"mdi:vibrate\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/vibration" + "\","
+        "\"state_topic\":\"") + String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/vibration" + "\","
         "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_vibration" +"\","
         "\"payload_on\":\"on\","
         "\"payload_off\":\"off\","
@@ -614,10 +619,18 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
 
 
 
+    // Determine the topic based on the value of the key
+    String state = doc[key].as<String>();
+    if (state == "on" || state == "off") {
+        // For binary sensors (with states like "on"/"off")
+        client.publish(binTopic.c_str(), value.c_str(), MQTT_RETAIN);
+    } else {
+        // For regular sensors
+        client.publish(topic.c_str(), value.c_str(), MQTT_RETAIN);
+    }
 
 
-    // Publish the value
-    client.publish(topic.c_str(), value.c_str(), MQTT_RETAIN);
+
   } else {
 
     //Serial.print("KEY not faund in JSON");
