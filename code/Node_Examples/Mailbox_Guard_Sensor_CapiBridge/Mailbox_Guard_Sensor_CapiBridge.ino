@@ -9,7 +9,6 @@
 
 #define SIGNAL_BANDWITH 125E3
 #define SPREADING_FACTOR 8
-#define TRANSMIT_BATTERY_VOLTAGE 1
 #define CODING_RATE 5
 #define SYNC_WORD 0xF3
 #define PREAMBLE_LENGTH 6
@@ -46,9 +45,8 @@ void setup() {
 
 void loop() {
   if (loopcounter < 2) {
-    delay(50);
+    delay(10);
     LoRa.beginPacket();
-#if TRANSMIT_BATTERY_VOLTAGE
     float volts = analogReadEnh(PIN_PB4, 12) * (1.1 / 4096) * (30 + 10) / 10;
     // Calculate percentage
     float percentage = ((volts - 3.2) / (4.15 - 3.2)) * 100;
@@ -56,9 +54,6 @@ void loop() {
 	int intPercentage = (int)percentage;
 	
     LoRa.print("{\"k\":\"" + String(GATEWAY_KEY) + "\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + String(intPercentage) + "}");
-#else
-    LoRa.print("{\"k\":\"" + String(GATEWAY_KEY) + "\",\"id\":\"" + String(NODE_NAME) + "\"}");
-#endif
     LoRa.endPacket();
     delay(10);
   }
@@ -66,15 +61,6 @@ void loop() {
   if (loopcounter > 2) {
     LoRa.sleep();  // Put the radio in sleep mode
     digitalWrite(3, LOW);  // Sets the Latch pin 3 LOW For power cut off
-
-    /* Set sleep mode to PWR_DOWN */
-    // There are five different sleep modes in order of power saving:
-    // SLEEP_MODE_IDLE - the lowest power saving mode
-    // SLEEP_MODE_ADC
-    // SLEEP_MODE_PWR_SAVE
-    // SLEEP_MODE_STANDBY
-    // SLEEP_MODE_PWR_DOWN - the highest power saving mode
-
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     sleep_enable();
     sleep_mode();  // Now enter sleep mode.
