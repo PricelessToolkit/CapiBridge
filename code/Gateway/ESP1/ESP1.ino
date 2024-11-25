@@ -459,7 +459,7 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
       }
 
 
-<<<<<<< HEAD
+
 =======
     // auto-discovery for Button
     if (doc.containsKey("bt")) {
@@ -483,7 +483,6 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
 
       }
 
->>>>>>> c56e3788c529db021ab86d2042582f74369d34f3
 
     // auto-discovery for Atmospheric pressure
     if (doc.containsKey("atm")) {
