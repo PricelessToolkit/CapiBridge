@@ -460,7 +460,6 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
 
 
 
-=======
     // auto-discovery for Button
     if (doc.containsKey("bt")) {
         
