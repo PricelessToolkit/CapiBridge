@@ -668,7 +668,7 @@ void updateMessagesAndPublish(const JsonDocument& doc) {
   publishIfKeyExists(doc, "mo", "/moisture");
   publishIfKeyExists(doc, "rw", "/row");
   publishIfKeyExists(doc, "bt", "/button");
-  publishIfKeyExists(doc, "atm", "/pressur");
+  publishIfKeyExists(doc, "atm", "/pressure");
   publishIfKeyExists(doc, "cd", "/co2");
   publishIfKeyExists(doc, "dr", "/door");
   publishIfKeyExists(doc, "wd", "/window");
