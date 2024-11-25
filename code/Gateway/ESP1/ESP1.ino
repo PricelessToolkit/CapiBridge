@@ -471,7 +471,7 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
         "\"name\":\"Pressure\","
         "\"device_class\":\"atmospheric_pressure\","
         "\"unit_of_measurement\":\"kPa\","
-        "\"icon\":\"mdi:button\","
+        "\"icon\":\"mdi:gas-cylinder\","
         "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/pressure" + "\","
         "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_atm" +"\","
         "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
