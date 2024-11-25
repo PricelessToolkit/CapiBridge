@@ -459,27 +459,6 @@ void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& 
       }
 
 
-    // auto-discovery for Button
-    if (doc.containsKey("bt")) {
-        
-
-    client.publish(
-        (String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/button/config").c_str(),
-        (String("{"
-        "\"name\":\"Button\","
-        "\"device_class\":\"none\","
-        "\"icon\":\"mdi:button\","
-        "\"state_topic\":\"") + String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/button" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_bt" +"\","
-        "\"payload_on\":\"on\","
-        "\"payload_off\":\"off\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
 
 
     // auto-discovery for Atmospheric pressure
