@@ -73,6 +73,7 @@ void loop() {
     doc["t2"] = "26";
     doc["t"] = "9.9";
     doc["vb"] = "on";
+    doc["bt"] = "on";
 
     // Serialize JSON document into the struct
     size_t jsonSize = serializeJson(doc, myData.json, sizeof(myData.json));
