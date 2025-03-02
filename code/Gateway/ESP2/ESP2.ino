@@ -36,10 +36,10 @@ void setup() {
   Serial1.begin(BAUD, SERIAL_8N1, RXPIN, TXPIN); // Communication Between ESPs
   Serial.begin(115200); // Communication Between ESP2 and PC
   Serial.println();
-  Serial.print("ESPNOW Gateway MAC Address:  ");
-  Serial.println(WiFi.macAddress());
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
+  Serial.print("ESPNOW Gateway MAC Address:  ");
+  Serial.println(WiFi.macAddress());
 
   // Init ESP-NOW
   if (esp_now_init() != ESP_OK) {
