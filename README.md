@@ -44,6 +44,7 @@ ____________
 
 
 ## 📣 Updates, Bugfixes, and Breaking Changes
+- 14.05.2025 - 2-way communication, for now only "LoRa" with ACK
 - 02.03.2025 - ESP-NOW "ESP2" Serial outputs incorrect MAC address "00:00:00..."
 - 25.11.2024 - Button autodiscovery topic.
 - 28.07.2024 - Binary sensors topics and Motion sensor autodiscovery.
@@ -258,6 +259,28 @@ int intPercentage = (int)percentage;
 	
 LoRa.print("{\"k\":\"" + String(GATEWAY_KEY) + "\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + String(intPercentage) + "}");
 ```
+
+## 🔁 2-Way Communication – Sending Commands
+
+To send a command via **LoRa**, publish a JSON payload to the following MQTT topic:
+
+```
+homeassistant/sensor/CapiBridge/command
+```
+
+Payload
+
+```json
+{"k":"xy","id":"PirBoxM","com":"xxxxxx"}
+```
+
+Descriptions
+
+| Key   | Description                   | Example     |
+|--------|-------------------------------|-------------|
+| `k`    | Private gateway key (auth)     | `"xy"`      |
+| `id`   | Target node name (device ID)   | `"PirBoxM"` |
+| `com`  | Command code (text)   | `"xxxxxx"`      |
 
 ## Troubleshooting
 If your DIY sensor/assembly is not showing up in Home Assistant, here are some tips that may help you find the problem.
