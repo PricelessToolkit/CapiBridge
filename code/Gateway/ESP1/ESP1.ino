@@ -28,6 +28,11 @@
 #define BINARY_SENSOR_TOPIC "homeassistant/binary_sensor/"
 #define SENSOR_TOPIC "homeassistant/sensor/"
 #define CAPIBRIDGE_RSSI_TOPIC "homeassistant/sensor/CapiBridge/rssi"
+#define CAPIBRIDGE_COMMAND_TOPIC "homeassistant/sensor/CapiBridge/command"
+
+String mqttMessage = "";
+bool newCommandReceived = false;
+
 
 unsigned long LedStartTime = 0;
 unsigned long diagTimer = 60000;
@@ -98,10 +103,11 @@ void reconnect() {
 
     if (client.connect(client_id.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
       Serial.println("MQTT connected");
-
       Serial.println("Buffersize: " + client.getBufferSize());
 
-
+      client.setCallback(callback);
+      client.subscribe(CAPIBRIDGE_COMMAND_TOPIC);
+      
         
     } else {
       Serial.print("MQTT failed, rc=");
@@ -714,6 +720,36 @@ void diag(){
 
 }
 
+void callback(char* incomingTopic, byte* payload, unsigned int length) {
+  String topicStr = String(incomingTopic);
+  mqttMessage = "";
+
+  for (unsigned int i = 0; i < length; i++) {
+    mqttMessage += (char)payload[i];
+  }
+
+  if (topicStr == CAPIBRIDGE_COMMAND_TOPIC && mqttMessage.length() > 0) {
+    newCommandReceived = true;
+  }
+}
+
+
+void SendCommands() {
+  if (newCommandReceived) {
+    Serial.println("MQTT Command Received: " + mqttMessage);
+    digitalWrite(LED_PIN, LOW);                 // Enabling LED_PIN
+    LedStartTime = millis();                    // LED Timer Start
+    
+    LoRa.beginPacket();
+    LoRa.print(mqttMessage);
+    LoRa.endPacket();
+
+    client.publish(CAPIBRIDGE_COMMAND_TOPIC, "", true); // reset
+    newCommandReceived = false;
+  }
+}
+
+
 
 void loop() {
 
@@ -769,4 +805,5 @@ void loop() {
       reconnect();
     }
   client.loop();
+  SendCommands();      // Sends if new command was received
 }
