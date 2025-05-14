@@ -14,7 +14,7 @@ ____________
 ## 🛒 Where to buy http://www.PricelessToolkit.com
 
 ## 🚀 Sensors that work out of the box with CapiBridge.
- - [Mailbox Guard](https://github.com/PricelessToolkit/MailBoxGuard) LoRa MailBox sensor
+ - [PirBOX-LITE](https://github.com/PricelessToolkit/PirBOX-LITE) LoRa Long-Range Motion Sensor for Mailbox/Garage.....
  - [SOILSENS-V5W](https://github.com/PricelessToolkit/SOILSENS-V5W) Soil moisture sensor
 
 ____________
