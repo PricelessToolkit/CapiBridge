@@ -149,7 +149,7 @@ ____________
 #define SIGNAL_BANDWITH 125E3  // signal bandwidth in Hz, defaults to 125E3
 #define SPREADING_FACTOR 8    // ranges from 6-12, default 7 see API docs
 #define CODING_RATE 5          // Supported values are between 5 and 8
-#define SYNC_WORD 0x12         // Any hexadecimal value from 0x00 to 0xFF. Dont use LoRaWAN/TTN "0x34"
+#define SYNC_WORD 0x12         // Dont use LoRaWAN/TTN "0x34"
 #define PREAMBLE_LENGTH 6      // Supported values are between 6 and 65535.
 #define TX_POWER 20            // TX power in dB, defaults to 17, Supported values are 2 to 20
 #define BAND 433E6             // 433E6 / 868E6 / 915E6 - Depends on what board you bought.
