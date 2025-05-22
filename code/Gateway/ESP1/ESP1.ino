@@ -733,6 +733,19 @@ void callback(char* incomingTopic, byte* payload, unsigned int length) {
   }
 }
 
+// -------------------- Xor Encryp/Decrypt -------------------- //
+
+String xorCipher(String input) {
+  const byte key[] = encryption_key;
+  const int keyLength = encryption_key_length;
+
+  String output = "";
+  for (int i = 0; i < input.length(); i++) {
+    byte keyByte = key[i % keyLength];
+    output += char(input[i] ^ keyByte);
+  }
+  return output;
+}
 
 void SendCommands() {
   if (newCommandReceived) {
@@ -740,6 +753,10 @@ void SendCommands() {
     digitalWrite(LED_PIN, LOW);                 // Enabling LED_PIN
     LedStartTime = millis();                    // LED Timer Start
     
+    #if Encryption
+    mqttMessage = xorCipher(mqttMessage);
+    #endif
+
     LoRa.beginPacket();
     LoRa.print(mqttMessage);
     LoRa.endPacket();
@@ -770,7 +787,14 @@ void loop() {
       digitalWrite(LED_PIN, LOW);                 // Enabling LED_PIN
       LedStartTime = millis();                    // LED Timer Start
     }
-    Serial.print("LoRa Message: ");
+
+    //Serial.print("LoRa ROW Message: ");
+    //Serial.println(recv);
+    //Serial.println(" ");
+    #if Encryption
+    recv = xorCipher(recv);
+    #endif
+    Serial.print("LoRa JSON Message: ");
     
     if (client.connected()) {
       //////////////// Inserting RSSI ///////////////////
