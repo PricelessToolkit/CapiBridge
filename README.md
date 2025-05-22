@@ -15,7 +15,8 @@ ____________
 
 ## 🚀 Sensors that work out of the box with CapiBridge.
  - [PirBOX-LITE](https://github.com/PricelessToolkit/PirBOX-LITE) LoRa Long-Range Motion Sensor for Mailbox/Garage.....
- - [SOILSENS-V5W](https://github.com/PricelessToolkit/SOILSENS-V5W) Soil moisture sensor
+ - [PirBOX-MAX](https://github.com/PricelessToolkit/PirBOX-MAX) LoRa Long-Range 2-Way Motion Sensor with reed switch inputs and relays
+ - [SOILSENS-V5W](https://github.com/PricelessToolkit/SOILSENS-V5W) Soil Moisture Sensor
 
 ____________
   
@@ -253,19 +254,50 @@ Full Suported MQTT-Autodiscovery List
 
 
 ## Sensor / Node Example
-The simplest way to create JSON String without the ArduinoJson.h library and transmit it via LoRa. `Example from MailBox sensor`
+The simplest way to create a JSON String without the ArduinoJson.h library and transmit it via LoRa with encryption. `Example from MailBox sensor`
 
 ```c
 #define NODE_NAME "mbox"
 #define GATEWAY_KEY "xy" // must match CapiBridge's key
+#define Encryption true                            // Global Payload obfuscation (Encryption)
+#define encryption_key_length 4                    // must match number of bytes in the XOR key array
+#define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }  // Multi-byte XOR key (between 2–16 values).
+                                                   // Use random-looking HEX values (from 0x00 to 0xFF).
+                                                   // Must match exactly on both sender and receiver.
+                                                   // Example: { 0x1F, 0x7E, 0xC2, 0x5A }  ➜ 4-byte key.
 
-float volts = analogReadEnh(PIN_PB4, 12) * (1.1 / 4096) * (30 + 10) / 10;
-// Calculate percentage
-float percentage = ((volts - 3.2) / (4.2 - 3.2)) * 100;
-percentage = constrain(percentage, 0, 100);
-int intPercentage = (int)percentage;
-	
-LoRa.print("{\"k\":\"" + String(GATEWAY_KEY) + "\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + String(intPercentage) + "}");
+
+// -------------------- Xor Encrypt/Decrypt -------------------- //
+
+String xorCipher(String input) {
+  const byte key[] = encryption_key;
+  const int keyLength = encryption_key_length;
+
+  String output = "";
+  for (int i = 0; i < input.length(); i++) {
+    byte keyByte = key[i % keyLength];
+    output += char(input[i] ^ keyByte);
+  }
+  return output;
+}
+
+
+
+void setup() //.......
+
+void loop() //........
+
+int battery = 10;
+String payload = "{\"k\":\"" + String(GATEWAY_KEY) + "\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + String(battery) + "}";
+
+#if defined(Encryption)
+  payload = xorCipher(payload);
+#endif
+
+LoRa.beginPacket();
+LoRa.print(payload);
+LoRa.endPacket();
+delay(2000);
 ```
 
 ## 🔁 2-Way Communication – Sending Commands
