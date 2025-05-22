@@ -86,7 +86,7 @@ void loop() {
 
   LoRa.print(payload);
   LoRa.endPacket();
-  delay(10);
+  delay(1000);
   }
 
   if (loopcounter > 2) {
