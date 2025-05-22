@@ -280,7 +280,7 @@ Full Suported MQTT-Autodiscovery List
 ## Sensor / Node Example
 The simplest way to create a JSON String without the ArduinoJson.h library and transmit it via LoRa with encryption. `Example from MailBox sensor`
 
-```c
+```cpp
 #define NODE_NAME "mbox"
 #define GATEWAY_KEY "xy" // must match CapiBridge's key
 #define Encryption true                            // Global Payload obfuscation (Encryption)
