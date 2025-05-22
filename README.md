@@ -44,7 +44,8 @@ ____________
 
 
 ## 📣 Updates, Bugfixes, and Breaking Changes
-- 22.05.2025 - XOR obfuscation "Encryption" work in progress
+- 22.05.2025 - Breaking Change (XOR obfuscation "Encryption" for LoRa).
+- - All LoRa sensors' firmware needs to be updated.
 - 14.05.2025 - [2-way communication,](https://github.com/PricelessToolkit/CapiBridge/tree/main?tab=readme-ov-file#-2-way-communication--sending-commands) for now only "LoRa".
 - 02.03.2025 - ESP-NOW "ESP2" Serial outputs incorrect MAC address "00:00:00..."
 - 25.11.2024 - Button autodiscovery topic.
@@ -101,11 +102,11 @@ ____________
 #include <esp_now.h>
 ```
 
-CapiBridge is based on ESP32-C3 so If you are using ESP32 for the first time, you need To install the ESP32 board and all libraries, in your Arduino IDE.
+CapiBridge is based on ESP32-C3, so if you are using ESP32 for the first time, you need to install the ESP32 board and all libraries in your Arduino IDE.
 - In your Arduino IDE, go to File> Preferences.
 - Enter `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json` into the “Additional Boards Manager URLs” field. Then, click the “OK” button
-- Open the Boards Manager. Go to Tools > Board > Boards Manager and Search for ESP32 and press the install button for the “esp32 by Expressif Systems“
-- Open Library Manager search for PubSubClient and press the install button, do the same for other libraries.
+- Open the Boards Manager. Go to Tools > Board > Boards Manager and search for ESP32 and press the install button for the “esp32 by Expressif Systems“
+- Open Library Manager, search for PubSubClient and press the install button, do the same for other libraries.
 
 ____________
 
@@ -118,22 +119,28 @@ ____________
 
 > [!NOTE]
 > For `ESP1.ino`
-> all configurations are done in the file `config.h`
+> All configurations are done in the file `config.h`
 
 
-#### Gateway Key
+#### Gateway Separation and Encryption Keys
 
 > [!IMPORTANT]
-> Unique key within the JSON to differentiate your signal from others. Must match the key in Nodes/Sensors.
+> Unique `GATEWAY_KEY` within the JSON to differentiate your data from others, and `encryption_key` to globally encrypt the payload. Must match the key in Nodes/Sensors.
+> 
 
-```c
+```cpp
 #define GATEWAY_KEY "xy"
+#define Encryption true                            // Global Payload Encryption, true or false
+#define encryption_key_length 4                    // must match number of bytes in the XOR key array
+#define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }  // Multi-byte XOR key (between 2–16 values).
+                                                   // Use random-looking HEX values (from 0x00 to 0xFF).
+                                                   // Must match exactly on both sender and receiver.
+                                                   // Example: { 0x1F, 0x7E, 0xC2, 0x5A }  ➜ 4-byte key.
+
 ```
 
-
-
 #### WIFI and MQTT Server Configuration
-```c
+```cpp
 #define WIFI_SSID "your_wifi_ssid"
 #define WIFI_PASSWORD "your_wifi_passwd"
 #define MQTT_USERNAME "your_mqtt_user"
@@ -146,7 +153,7 @@ ____________
 > [!IMPORTANT]
 > LoRa configuration must match the configuration in Nodes/Sensors.
 
-```c
+```cpp
 #define SIGNAL_BANDWITH 125E3  // signal bandwidth in Hz, defaults to 125E3
 #define SPREADING_FACTOR 8    // ranges from 6-12, default 7 see API docs
 #define CODING_RATE 5          // Supported values are between 5 and 8
