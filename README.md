@@ -130,7 +130,7 @@ ____________
 > 
 
 ```cpp
-#define GATEWAY_KEY "xy"
+#define GATEWAY_KEY "xy"                           // Separation key 2 letters
 #define Encryption true                            // Global Payload Encryption, true or false
 #define encryption_key_length 4                    // must match number of bytes in the XOR key array
 #define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }  // Multi-byte XOR key (between 2–16 values).
@@ -139,8 +139,31 @@ ____________
                                                    // Example: { 0x1F, 0x7E, 0xC2, 0x5A }  ➜ 4-byte key.
 
 ```
+#### 🔐 How to Create Your `encryption_key` Using a Calculator
+
+1. **Choose a few numbers between `1` and `255`**  
+   These will be your secret key values.  
+   **Example:** `5`, `162`, `77`, `33`
+
+2. **Open your calculator:**
+   - **Windows:** Open the **Calculator app** → Click the **☰ menu** → Choose **Programmer**
+   - Or use any online converter (Google: _"decimal to hex converter"_)
+
+3. **Convert each number to HEX:**
+   - Type your decimal number (e.g., `5`)
+   - Switch to **HEX mode**
+   - You’ll see the result (e.g., `0x05`)
+
+4. **Use the converted HEX values in your config:**
+
+```cpp
+#define encryption_key { 0x05, ...., ...., .... }
+#define encryption_key_length 4
+
+```
 
 #### WIFI and MQTT Server Configuration
+
 ```cpp
 #define WIFI_SSID "your_wifi_ssid"
 #define WIFI_PASSWORD "your_wifi_passwd"
@@ -148,6 +171,7 @@ ____________
 #define MQTT_PASSWORD "your_mqtt_passwd"
 #define MQTT_SERVER "your_mqtt_broker_address"
 #define MQTT_PORT 1883
+
 ```
 #### LoRa Configuration
 
