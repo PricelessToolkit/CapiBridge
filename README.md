@@ -15,7 +15,8 @@ ____________
 
 ## 🚀 Sensors that work out of the box with CapiBridge.
  - [PirBOX-LITE](https://github.com/PricelessToolkit/PirBOX-LITE) LoRa Long-Range Motion Sensor for Mailbox/Garage.....
- - [SOILSENS-V5W](https://github.com/PricelessToolkit/SOILSENS-V5W) Soil moisture sensor
+ - [PirBOX-MAX](https://github.com/PricelessToolkit/PirBOX-MAX) LoRa Long-Range 2-Way Motion Sensor with reed switch inputs and relays
+ - [SOILSENS-V5W](https://github.com/PricelessToolkit/SOILSENS-V5W) Soil Moisture Sensor
 
 ____________
   
