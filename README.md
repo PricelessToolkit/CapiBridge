@@ -309,7 +309,7 @@ String xorCipher(String input) {
 
 void setup() //.......
 
-void loop() //........
+void loop() {
 
 int battery = 10;
 String payload = "{\"k\":\"" + String(GATEWAY_KEY) + "\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + String(battery) + "}";
@@ -322,6 +322,7 @@ LoRa.beginPacket();
 LoRa.print(payload);
 LoRa.endPacket();
 delay(2000);
+}
 ```
 
 ## 🔁 2-Way Communication – Sending Commands
