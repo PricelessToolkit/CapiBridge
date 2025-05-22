@@ -44,6 +44,7 @@ ____________
 
 
 ## 📣 Updates, Bugfixes, and Breaking Changes
+- 22.05.2025 - XOR obfuscation "Encryption" work in progress
 - 14.05.2025 - [2-way communication,](https://github.com/PricelessToolkit/CapiBridge/tree/main?tab=readme-ov-file#-2-way-communication--sending-commands) for now only "LoRa".
 - 02.03.2025 - ESP-NOW "ESP2" Serial outputs incorrect MAC address "00:00:00..."
 - 25.11.2024 - Button autodiscovery topic.
