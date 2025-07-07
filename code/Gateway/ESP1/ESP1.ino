@@ -709,7 +709,7 @@ void diag(){
     // send auto-discovery message for CapiBridge Diagnostic rssi
     client.publish(
       (String(CAPIBRIDGE_RSSI_TOPIC) + String("/config")).c_str(),
-      (String("{\"name\":\"RSSI\",\"unit_of_measurement\":\"dBm\",\"device_class\":\"signal_strength\",\"icon\":\"mdi:signal\",\"entity_category\":\"diagnostic\",\"state_topic\":\"") + String(CAPIBRIDGE_RSSI_TOPIC) + String("\",\"unique_id\":\"capibridge_rssi\",\"device\":{\"identifiers\":[\"capibridge\"],\"name\":\"CapiBridge\",\"mdl\":\"CapiBridge\",\"mf\":\"PriclessToolkit\"}}")).c_str(),
+      (String("{\"name\":\"RSSI\",\"unit_of_measurement\":\"dBm\",\"device_class\":\"signal_strength\",\"icon\":\"mdi:signal\",\"entity_category\":\"diagnostic\",\"state_topic\":\"") + String(CAPIBRIDGE_RSSI_TOPIC) + String("\",\"unique_id\":\"capibridge_rssi\",\"device\":{\"identifiers\":[\"capibridge\"],\"name\":\"CapiBridge\",\"mdl\":\"CapiBridge\",\"mf\":\"PricelessToolkit\"}}")).c_str(),
       MQTT_RETAIN);
 
     // Sends RSSI value
