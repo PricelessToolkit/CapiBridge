@@ -1,11 +1,11 @@
 <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/banner.jpg"/>
 
-🤗 Please consider subscribing to my [YouTube channel](https://www.youtube.com/@PricelessToolkit/videos) Your subscription goes a long way in backing my work. if you feel more generous, you can buy me a coffee
+🤗 Please consider subscribing to my [YouTube channel](https://www.youtube.com/@PricelessToolkit/videos). Your subscription goes a long way in backing my work. if you feel more generous, you can buy me a coffee
 
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U6U2QLAF8)
 
-CapiBridge is an open-source one-way gateway for low-power devices. It supports various communication technologies including LoRa, ESP-NOW, and WiFi. The gateway receives JSON strings from LoRa and ESP-NOW DIY devices and publishes them to an MQTT server. It automatically separates the JSON string into dynamic MQTT topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all your DIY projects, focusing on simplicity and unified protocol handling.
+CapiBridge is an open-source one-way gateway for low-power devices. It supports various communication technologies, including LoRa, ESP-NOW, and WiFi. The gateway receives JSON strings from LoRa and ESP-NOW DIY devices and publishes them to an MQTT server. It automatically separates the JSON string into dynamic MQTT topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all your DIY projects, focusing on simplicity and unified protocol handling.
 
 [<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/video.jpg"/>](https://www.youtube.com/watch?v=mJt_VbMeRAU)
 
@@ -31,7 +31,7 @@ ____________
 - Power Pins 5V, 3.3V, GND
 - USB-C with auto reset
 - UART switch for selecting ( ESP1 | ESP2 )
-- Buttons for flashing and reset
+- Buttons for flashing and resetting
 - Debug LEDs
   - USB - TX, RX
   - ESP1 to ESP2 - TX, RX
@@ -45,6 +45,8 @@ ____________
 
 
 ## 📣 Updates, Bugfixes, and Breaking Changes
+- 28.07.2025 - Hardware modification, The new LoRa module RA-01SH "SX1262"
+- - Using a SX1262 compartible library.
 - 22.05.2025 - Breaking Change (XOR obfuscation "Encryption" for LoRa).
 - - All LoRa sensors' firmware needs to be updated.
 - 14.05.2025 - [2-way communication,](https://github.com/PricelessToolkit/CapiBridge/tree/main?tab=readme-ov-file#-2-way-communication--sending-commands) for now only "LoRa".
@@ -176,9 +178,14 @@ ____________
 #### LoRa Configuration
 
 > [!IMPORTANT]
-> LoRa configuration must match the configuration in Nodes/Sensors.
+> 1. LoRa configuration must match the configuration in Nodes/Sensors.
+> 2. For "RA-01H SX1276" and "RA-01SH SX1262" configuration is different
+
+Configuration for LoRa module "RA-01H" Rf chip "SX1276"
+All orders before 29/07/2025
 
 ```cpp
+
 #define SIGNAL_BANDWITH 125E3  // signal bandwidth in Hz, defaults to 125E3
 #define SPREADING_FACTOR 8    // ranges from 6-12, default 7 see API docs
 #define CODING_RATE 5          // Supported values are between 5 and 8
@@ -186,23 +193,33 @@ ____________
 #define PREAMBLE_LENGTH 6      // Supported values are between 6 and 65535.
 #define TX_POWER 20            // TX power in dB, defaults to 17, Supported values are 2 to 20
 #define BAND 433E6             // 433E6 / 868E6 / 915E6 - Depends on what board you bought.
+
+```
+
+Configuration for the newer LoRa module "RA-01SH" RF chip is "SX1262"
+All orders after 29/07/2025
+
+```cpp
+
+#define BAND 868.0                  // 433.0 / 868.0 / 915.0
+#define LORA_TX_POWER 22            // TX power in dB. Supported values are 2 to 22
+
+//| Bandwidth | Supported Spreading Factors |
+//|-----------|-----------------------------|
+//| 125 kHz   | SF5 – SF9                   |
+//| 250 kHz   | SF5 – SF10                  |
+//| 500 kHz   | SF5 – SF11                  |
+
+#define LORA_SIGNAL_BANDWIDTH 250.0  // signal bandwidth in KHz, defaults to 125.0, 250.0, 500.0
+#define LORA_SPREADING_FACTOR 10     // ranges from 5-11
+#define LORA_CODING_RATE 5           // Supported values are between 5 and 8, these correspond to coding rates of 4/5 and 4/8. The coding rate numerator is fixed at 4.
+#define LORA_SYNC_WORD 0x12          // byte value to use as the sync word, defaults to 0x12
+#define LORA_PREAMBLE_LENGTH 12      // Supported values are between 6 and 65535.
+
 ```
 
 > [!IMPORTANT]
-> For optimizing the `SPREADING_FACTOR` (SF) in your network, it's crucial not to default to SF12 aiming for maximum distance without considering its downsides. SF12, while extending range, significantly slows down data transmission. For example, if your furthest sensor is only 100 meters away, opting for SF7 is more efficient. SF7 is faster, taking only 0.027 seconds to transmit "6 bytes", thus consuming less power compared to SF12, which would take 0.75 seconds for the same task. Therefore, it's essential to choose the SF wisely based on your specific needs and understand the trade-offs. Avoid setting SF12 by default without assessing the impact on speed, power consumption, and time on air (ToA) for others.
-```c
-// For sending 6 bytes "6 characters" of data using different Spreading Factors (SF), the estimated time on air (ToA)
-// for each SF is as follows:
-
-// SF7: Approximately 0.027 seconds (27.494 milliseconds)
-// SF8: Approximately 0.052 seconds (52.224 milliseconds)
-// SF9: Approximately 0.100 seconds (100.147 milliseconds)
-// SF10: Approximately 0.193 seconds (193.413 milliseconds)
-// SF11: Approximately 0.385 seconds (385.297 milliseconds)
-// SF12: Approximately 0.746 seconds (746.127 milliseconds)
-// These calculations demonstrate how the time on air increases with higher Spreading Factors
-// due to the decreased data rate, which is a trade-off for increased communication range and signal robustness.
-```
+> For optimizing the `SPREADING_FACTOR` (SF) in your network, it's crucial not to default to SF11, aiming for maximum distance without considering its downsides. SF11, while extending range, significantly slows down data transmission. For example, if your furthest sensor is only 100 meters away, opting for SF7 is more efficient. SF7 is faster, consuming less power compared to SF11. Therefore, it's essential to choose the SF wisely based on your specific needs and understand the trade-offs. Avoid setting SF11 by default without assessing the impact on speed, power consumption, and time on air (ToA) for others.
 
 ____________
 
