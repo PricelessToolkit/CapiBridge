@@ -301,19 +301,87 @@ The simplest way to create a JSON String without the ArduinoJson.h library and t
                                                    // Example: { 0x1F, 0x7E, 0xC2, 0x5A }  ➜ 4-byte key.
 
 
-// -------------------- Xor Encrypt/Decrypt -------------------- //
+// ------------------- XOR + BASE 64 ------------------//
 
-String xorCipher(String input) {
-  const byte key[] = encryption_key;
-  const int keyLength = encryption_key_length;
+// config.h has:
+// #define encryption_key_length 4
+// #define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }
 
-  String output = "";
-  for (int i = 0; i < input.length(); i++) {
-    byte keyByte = key[i % keyLength];
-    output += char(input[i] ^ keyByte);
+String xorCipher(String in) {
+
+  // 1) Use an ARRAY, not a pointer, for the macro initializer
+  static const uint8_t key[] = encryption_key;
+  const int K = encryption_key_length;
+
+  auto isB64 = [](const String& s)->bool{
+    if (s.length() % 4) return false;
+    for (size_t i=0;i<s.length();++i){
+      char c=s[i];
+      if (!((c>='A'&&c<='Z')||(c>='a'&&c<='z')||(c>='0'&&c<='9')||c=='+'||c=='/'||c=='=')) return false;
+    }
+    return true;
+  };
+
+  auto b64enc = [](const uint8_t* b, size_t n)->String{
+    static const char T[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    String o; o.reserve(((n+2)/3)*4);
+    for(size_t i=0;i<n;i+=3){
+      uint32_t v = ((uint32_t)b[i] << 16)
+                 | ((i+1<n ? (uint32_t)b[i+1] : 0) << 8)
+                 |  (i+2<n ? (uint32_t)b[i+2] : 0);
+      o += T[(v>>18)&63]; o += T[(v>>12)&63];
+      o += (i+1<n) ? T[(v>>6)&63] : '=';
+      o += (i+2<n) ? T[v&63]      : '=';
+    }
+    return o;
+  };
+
+  auto b64val = [](char c)->int{
+    if(c>='A'&&c<='Z') return c-'A';
+    if(c>='a'&&c<='z') return 26+c-'a';
+    if(c>='0'&&c<='9') return 52+c-'0';
+    if(c=='+') return 62;
+    if(c=='/') return 63;
+    return -1;
+  };
+
+  auto b64dec = [&](const String& s)->String{
+    String o; o.reserve((s.length()/4)*3);
+    for(size_t i=0;i<s.length(); i+=4){
+      int a=b64val(s[i]), b=b64val(s[i+1]);
+      int c = (s[i+2]=='=') ? -1 : b64val(s[i+2]);
+      int d = (s[i+3]=='=') ? -1 : b64val(s[i+3]);
+
+      // 2) Upcast before shifting (AVR int is 16-bit)
+      uint32_t v = ((uint32_t)(a & 63) << 18)
+                 | ((uint32_t)(b & 63) << 12)
+                 | ((uint32_t)((c < 0 ? 0 : (c & 63))) << 6)
+                 |  (uint32_t)((d < 0 ? 0 : (d & 63)));
+
+      o += (char)((v >> 16) & 0xFF);
+      if (c >= 0) o += (char)((v >> 8) & 0xFF);
+      if (d >= 0) o += (char)(v & 0xFF);
+    }
+    return o;
+  };
+
+  if (isB64(in)) {                 // decrypt: Base64 -> XOR -> JSON
+    String bytes = b64dec(in);
+    String out; out.reserve(bytes.length());
+    for (size_t i=0;i<bytes.length();++i)
+      out += (char)(((uint8_t)bytes[i]) ^ key[i % K]);
+    return out;
+  } else {                         // encrypt: JSON -> XOR -> Base64
+    String x; x.reserve(in.length());
+    for (size_t i=0;i<in.length();++i)
+      x += (char)(((uint8_t)in[i]) ^ key[i % K]);
+    return b64enc((const uint8_t*)x.c_str(), x.length());
   }
-  return output;
 }
+
+
+
+//---------------------- XOR END ----------------------//
 
 
 
@@ -346,16 +414,24 @@ homeassistant/sensor/CapiBridge/command
 Payload
 
 ```json
-{"k":"xy","id":"PirBoxM","com":"xxxxxx"}
+{"k":"xy","id":"PirBoxM","rm":"lora","com":"xxxxxx"}
+```
+Also, possible sending ESP-NOW payload "work in progress"
+```json
+{"k":"xy","id":"PirBoxM","rm":"espnow","com":"xxxxxx"}
 ```
 
 Descriptions
 
-| Key   | Description                   | Example     |
-|--------|-------------------------------|-------------|
-| `k`    | Private gateway key (auth)     | `"xy"`      |
-| `id`   | Target node name (device ID)   | `"PirBoxM"` |
-| `com`  | Command code (text)   | `"xxxxxx"`      |
+| Key   | Description                     | Example     |
+|-------|---------------------------------|-------------|
+| `k`   | Private gateway key (auth)      | `"xy"`      |
+| `id`  | Target node name (device ID)    | `"PirBoxM"` |
+| `rm`  | Radio mode (`lora` / `espnow`)  | `"lora", "espnow"`    |
+| `com` | Command code (text)             | `"xxxxxx"`  |
+
+
+
 
 ## Troubleshooting
 If your DIY sensor/assembly is not showing up in Home Assistant, here are some tips that may help you find the problem.
