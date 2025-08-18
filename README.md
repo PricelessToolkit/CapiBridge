@@ -45,8 +45,12 @@ ____________
 
 
 ## 📣 Updates, Bugfixes, and Breaking Changes
-- 28.07.2025 - Hardware modification, The new LoRa module RA-01SH "SX1262"
-- - Using a SX1262 compartible library.
+- 18.08.2025 - Hardware modification, The new LoRa module RA-01SH "SX1262"
+- - Added option to select LoRA module type via config.
+```c
+     //#define LORA_MODULE LORA_MODULE_SX1276  // SX1276 Module (orders shipped before Aug 2025)
+   #define LORA_MODULE LORA_MODULE_SX1262  // SX1262 Module CapiBridge v2 (orders shipped after Aug 2025)
+```
 - 22.05.2025 - Breaking Change (XOR obfuscation "Encryption" for LoRa).
 - - All LoRa sensors' firmware needs to be updated.
 - 14.05.2025 - [2-way communication,](https://github.com/PricelessToolkit/CapiBridge/tree/main?tab=readme-ov-file#-2-way-communication--sending-commands) for now only "LoRa".
@@ -98,7 +102,7 @@ ____________
 ```c
 #include <Arduino.h>
 #include <SPI.h>
-#include <LoRa.h>
+#include <RadioLib.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -164,57 +168,46 @@ ____________
 
 ```
 
-#### WIFI and MQTT Server Configuration
+#### WIFI Configuration
 
 ```cpp
-#define WIFI_SSID "your_wifi_ssid"
-#define WIFI_PASSWORD "your_wifi_passwd"
-#define MQTT_USERNAME "your_mqtt_user"
-#define MQTT_PASSWORD "your_mqtt_passwd"
-#define MQTT_SERVER "your_mqtt_broker_address"
+#define WIFI_SSID ""
+#define WIFI_PASSWORD ""
+
+```
+#### MQTT Server Configuration
+
+```cpp
+#define MQTT_USERNAME ""
+#define MQTT_PASSWORD ""
+#define MQTT_SERVER ""
 #define MQTT_PORT 1883
+#define DISCOVERY_EVERY_PACKET true      // true  = publish discovery every time data is received from that sensor
+                                         // false = publish discovery once per CapiBridge boot (remembers if that sensor is already published)
+                                         // Using false reduces MQTT traffic, but if you delete a sensor in Home Assistant,
+                                         // you must reboot CapiBridge to clear the cache so it can rediscover that sensor
 
 ```
 #### LoRa Configuration
 
 > [!IMPORTANT]
-> 1. LoRa configuration must match the configuration in Nodes/Sensors.
-> 2. For "RA-01H SX1276" and "RA-01SH SX1262" configuration is different
-
-Configuration for LoRa module "RA-01H" Rf chip "SX1276"
-All orders before 29/07/2025
+> LoRa configuration must match the configuration in Nodes/Sensors.
 
 ```cpp
 
-#define SIGNAL_BANDWITH 125E3  // signal bandwidth in Hz, defaults to 125E3
-#define SPREADING_FACTOR 8    // ranges from 6-12, default 7 see API docs
-#define CODING_RATE 5          // Supported values are between 5 and 8
-#define SYNC_WORD 0x12         // Dont use LoRaWAN/TTN "0x34"
-#define PREAMBLE_LENGTH 6      // Supported values are between 6 and 65535.
-#define TX_POWER 20            // TX power in dB, defaults to 17, Supported values are 2 to 20
-#define BAND 433E6             // 433E6 / 868E6 / 915E6 - Depends on what board you bought.
+#define BAND 868.0                       // 433.0 / 868.0 / 915.0
+#define LORA_TX_POWER 20                 // dBm; check regulatory limits in your region (SX1262 supports up to 22) (SX1276 supports up to 20)
 
-```
+/// Bandwidth vs SF support (SX126x):
+// 125 kHz: SF5–SF9
+// 250 kHz: SF5–SF10
+// 500 kHz: SF5–SF11
 
-Configuration for the newer LoRa module "RA-01SH" RF chip is "SX1262"
-All orders after 29/07/2025
-
-```cpp
-
-#define BAND 868.0                  // 433.0 / 868.0 / 915.0
-#define LORA_TX_POWER 22            // TX power in dB. Supported values are 2 to 22
-
-//| Bandwidth | Supported Spreading Factors |
-//|-----------|-----------------------------|
-//| 125 kHz   | SF5 – SF9                   |
-//| 250 kHz   | SF5 – SF10                  |
-//| 500 kHz   | SF5 – SF11                  |
-
-#define LORA_SIGNAL_BANDWIDTH 250.0  // signal bandwidth in KHz, defaults to 125.0, 250.0, 500.0
-#define LORA_SPREADING_FACTOR 10     // ranges from 5-11
-#define LORA_CODING_RATE 5           // Supported values are between 5 and 8, these correspond to coding rates of 4/5 and 4/8. The coding rate numerator is fixed at 4.
-#define LORA_SYNC_WORD 0x12          // byte value to use as the sync word, defaults to 0x12
-#define LORA_PREAMBLE_LENGTH 12      // Supported values are between 6 and 65535.
+#define LORA_SIGNAL_BANDWIDTH 250.0     // kHz: 125.0, 250.0, 500.0
+#define LORA_SPREADING_FACTOR 10        // "5–11 on SX1262" "6-12 on SX1276"
+#define LORA_CODING_RATE 5              // 5–8 → coding rate 4/5 .. 4/8
+#define LORA_SYNC_WORD 0x12             // Default 0x12 Dont Change
+#define LORA_PREAMBLE_LENGTH 12         // 6..65535
 
 ```
 
