@@ -1,725 +1,90 @@
-// Bugfixes and breaking Changes
-// 15.06.2024 - Battery in percent
-
-
+// For Older Board with RA-01H (SX1276)
 
 #include <Arduino.h>
 #include "config.h"
+#include "radio.h"
 #include <SPI.h>
-#include <LoRa.h>
+#include <RadioLib.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <vector>
 
-#define CONFIG_MOSI 1
-#define CONFIG_MISO 0
-#define CONFIG_CLK  4
-#define CONFIG_NSS  3
-#define CONFIG_RST  6
-#define CONFIG_DIO0 5
+
+RADIO_CLASS radio = new Module(MODULE_ARGS);
+
+volatile bool packetReceived = false;
+void onReceive() { packetReceived = true; }
 
 #define LED_PIN 2
 #define BAUD 115200
 #define RXPIN 18 // Connected to ESP2 "ESPNOW RECEIVER"
 #define TXPIN 19 // Connected to ESP2 "ESPNOW RECEIVER"
 
-
+// ===== MQTT / Topics =====
 #define MQTT_RETAIN true
 #define BINARY_SENSOR_TOPIC "homeassistant/binary_sensor/"
 #define SENSOR_TOPIC "homeassistant/sensor/"
+
+// Global LWT for availability of the bridge (and used by entities)
+#define CAPIBRIDGE_LWT_TOPIC "capibridge/availability"
 #define CAPIBRIDGE_RSSI_TOPIC "homeassistant/sensor/CapiBridge/rssi"
-#define CAPIBRIDGE_COMMAND_TOPIC "homeassistant/sensor/CapiBridge/command"
+#define CAPIBRIDGE_COMMAND_TOPIC "homeassistant/sensor/CapiBridge/command" // kept as-is
+
+// Availability payloads
+#define AVAIL_ON  "online"
+#define AVAIL_OFF "offline"
 
 String mqttMessage = "";
+String mqttMessagexor = "";
 bool newCommandReceived = false;
-
 
 unsigned long LedStartTime = 0;
 unsigned long diagTimer = 60000;
 unsigned long lastDiagTimer = 0;
-unsigned long currentDiagMillis;
 
-struct json_msg {
-  String k;
-  String id;
-  int16_t r;
-  int16_t b;
-  int16_t v;
-  float pw;
-  int16_t l;
-  String m;
-  float w;
-  String s;
-  int16_t e;
-  float t;
-  float t2;
-  int16_t hu;
-  int16_t mo;
-  String rw;
-  String bt;
-  float atm;
-  float cd;
-  String dr;
-  String wd;
-  String vb;
-};
-
-json_msg received_json_message;
+// Track discovery we’ve already published: key = "<id>|<suffix>"
+std::vector<String> publishedDiscovery;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+// ---------- Helpers to avoid discovery spam ----------
+static bool discoveryPublishedFor(const String &id, const String &suffix) {
+  String key = id + "|" + suffix;
+  for (const auto &v : publishedDiscovery) {
+    if (v == key) return true;
+  }
+  return false;
+}
+static void markDiscoveryPublished(const String &id, const String &suffix) {
+  publishedDiscovery.push_back(id + "|" + suffix);
+}
+
+// ---------- WiFi ----------
 void setup_wifi() {
-  delay(10);
   Serial.println();
   Serial.print("Connecting to ");
   Serial.println(WIFI_SSID);
-
+  WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  while (WiFi.status() != WL_CONNECTED) {
+  unsigned long start = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - start < 20000) {
     delay(500);
     Serial.print(".");
   }
-
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-}
-
-
-void reconnect() {
-  while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    // Buffer needs to be increased to accomodate the config payloads
-    if (client.setBufferSize(1024)) {
-      Serial.println("Buffer Size increased to 1024 byte");
-    } else {
-      Serial.println("Failed to allocate larger buffer");
-    }
-
-    String client_id = "CapiBridge";
-
-    if (client.connect(client_id.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
-      Serial.println("MQTT connected");
-      Serial.println("Buffersize: " + client.getBufferSize());
-
-      client.setCallback(callback);
-      client.subscribe(CAPIBRIDGE_COMMAND_TOPIC);
-      
-        
-    } else {
-      Serial.print("MQTT failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 1 seconds");
-      delay(1000);
-    }
-  }
-}
-
-
-
-void setup() {
-  Serial1.begin(BAUD, SERIAL_8N1, RXPIN, TXPIN); // Serial Betwen ESP1 and ESP2
-  Serial.begin(115200);
-
-  setup_wifi();
-  client.setServer(MQTT_SERVER, MQTT_PORT);
-  reconnect();
-  
-  pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, HIGH);   // HIGH = OFF
-
-  SPI.begin(CONFIG_CLK, CONFIG_MISO, CONFIG_MOSI, CONFIG_NSS);
-  LoRa.setPins(CONFIG_NSS, CONFIG_RST, CONFIG_DIO0);
-  Serial.println("Starting LoRa on " + String(BAND) + " MHz");
-  if (!LoRa.begin(BAND)) {
-    Serial.println("Starting LoRa failed!");
-    while (1) {}
-  }
-
-  LoRa.setSignalBandwidth(SIGNAL_BANDWITH);  // signal bandwidth in Hz, defaults to 125E3
-  LoRa.setSpreadingFactor(SPREADING_FACTOR);  // ranges from 6-12,default 7 see API docs
-  LoRa.setCodingRate4(CODING_RATE);  // Supported values are between 5 and 8, these correspond to coding rates of 4/5 and 4/8. The coding rate numerator is fixed at 4.
-  LoRa.setSyncWord(SYNC_WORD);  // byte value to use as the sync word, defaults to 0x12
-  LoRa.setPreambleLength(PREAMBLE_LENGTH);  // Supported values are between 6 and 65535.
-  LoRa.disableCrc();  // Enable or disable CRC usage, by default a CRC is not used LoRa.disableCrc();
-  LoRa.setTxPower(TX_POWER);  // TX power in dB, defaults to 17, Supported values are 2 to 20
-
-}
-
-
-
-void publishIfKeyExists(const JsonDocument& doc, const char* key, const String& topicSuffix) {
-  if (doc.containsKey(key)) {
-    String topic = String(SENSOR_TOPIC) + String(received_json_message.id) + topicSuffix;
-    String binTopic = String(BINARY_SENSOR_TOPIC) + String(received_json_message.id) + topicSuffix;
-    String value;
-
-    // Determine the type of the key value and convert to string appropriately
-    if (doc[key].is<int>()) {
-      // For integers
-      value = String(doc[key].as<int>());
-    } else if (doc[key].is<float>()) {
-      // For floats
-      value = String(doc[key].as<float>(), 2); // Assuming 2 decimal places for float
-    } else if (doc[key].is<String>()) {
-      // For strings
-      value = doc[key].as<String>();
-    } else {
-      // If the type is not expected, you can log an error or handle accordingly
-      Serial.println("Unsupported type for key: " + String(key));
-      return;
-    }
-
-
- ///////////////////////// auto-discovery ////////////////////////////////
-
-/* Json Structur
-  Example of received data from LoRa directly or from Second ESP "Serial1" {\"k\":\"ab\",\"id\":\"node2\",\"r\":\"115\",\"b\":\"3.2\",\"rw\":\"smile\"}
-
-
-  | Key   | Description               | Unit of Measurement | Required |
-|-------|---------------------------|---------------------|----------|
-| `k`   | Private Gateway key       | -                   | Yes      |
-| `id`  | Node Name                 | -                   | Yes      |
-| `r`   | RSSI                      | dBm                 | No       |
-| `b`   | Percentage of battery     | %                   | No       |
-| `v`   | Volts                     | Volts               | No       |
-| `pw`  | Current                   | mAh                 | No       |
-| `l`   | Luminance                 | lux                 | No       |
-| `m`   | Motion                    | Binary on/off       | No       |
-| `w`   | Weight                    | grams               | No       |
-| `s`   | State                     | Anything            | No       |
-| `t`   | Temperature               | °C                  | No       |
-| `t2`  | Temperature 2             | °C                  | No       |
-| `hu`  | Humidity                  | %                   | No       |
-| `mo`  | Moisture                  | %                   | No       |
-| `rw`  | ROW                       | Anything            | No       |
-| `bt`  | Button                    | Binary on/off       | No       |
-| `atm` | Pressure                  | kph                 | No       |
-| `cd`  | Dioxyde de carbone        | ppm                 | No       |
-| `dr`  | Door                      | Binary on/off       | No       |
-| `wd`  | Window                    | Binary on/off       | No       |
-| `vb`  | Vibration                 | Binary on/off       | No       |
-
- */
-
-
-
-    // auto-discovery for Battery
-    if (doc.containsKey("b")) {
-        
-
-    client.publish(
-        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/batt/config").c_str(),
-        (String("{"
-        "\"name\":\"Battery\","
-        "\"device_class\":\"battery\","
-        "\"unit_of_measurement\":\"%\","
-        "\"icon\":\"mdi:battery\","
-        "\"entity_category\":\"diagnostic\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/batt" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_batt" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-    // auto-discovery for RSSI
-    if (doc.containsKey("r")) {
-
-
-    client.publish(
-      (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/rssi/config").c_str(),
-      (String("{"
-        "\"name\":\"RSSI\","
-        "\"unit_of_measurement\":\"dBm\","
-        "\"device_class\":\"signal_strength\","
-        "\"icon\":\"mdi:signal\","
-        "\"entity_category\":\"diagnostic\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() +  "/rssi" +"\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_rssi" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() + "\"}}").c_str(),
-      MQTT_RETAIN);
-
-      }
-
-    
-    // auto-discovery for Row data TEXT
-    if (doc.containsKey("rw")) {
-
-
-    client.publish(
-      (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/row/config").c_str(),
-      (String("{"
-        "\"name\":\"Text\","
-        "\"icon\":\"mdi:text\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() +  "/row" +"\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_row" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-      MQTT_RETAIN);
-
-      }
-
-
-    // auto-discovery for State
-    if (doc.containsKey("s")) {
-
-
-    client.publish(
-      (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/state/config").c_str(),
-      (String("{"
-        "\"name\":\"State\","
-        "\"icon\":\"mdi:list-status\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() +  "/state" +"\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_state" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() + "\"}}").c_str(),
-      MQTT_RETAIN);
-
-      }
-
-    // auto-discovery for Volt
-    if (doc.containsKey("v")) {
-        
-
-    client.publish(
-        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/volt/config").c_str(),
-        (String("{"
-        "\"name\":\"Volt\","
-        "\"device_class\":\"voltage\","
-        "\"unit_of_measurement\":\"V\","
-        "\"icon\":\"mdi:flash-triangle\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/volt" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_volt" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-
-    // auto-discovery for Current
-    if (doc.containsKey("pw")) {
-        
-
-    client.publish(
-        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/current/config").c_str(),
-        (String("{"
-        "\"name\":\"Current\","
-        "\"device_class\":\"current\","
-        "\"unit_of_measurement\":\"mA\","
-        "\"icon\":\"mdi:current-dc\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/current" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_pw" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-
-
-
-    // auto-discovery for illuminance
-    if (doc.containsKey("l")) {
-        
-
-    client.publish(
-        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/lx/config").c_str(),
-        (String("{"
-        "\"name\":\"Lux\","
-        "\"device_class\":\"illuminance\","
-        "\"unit_of_measurement\":\"lx\","
-        "\"icon\":\"mdi:brightness-1\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/lx" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_lx" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-
-
-    // auto-discovery for Weight
-    if (doc.containsKey("w")) {
-        
-
-    client.publish(
-        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/weight/config").c_str(),
-        (String("{"
-        "\"name\":\"Weight\","
-        "\"device_class\":\"weight\","
-        "\"unit_of_measurement\":\"g\","
-        "\"icon\":\"mdi:weight\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/weight" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_w" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-
-    // auto-discovery for Temperature
-    if (doc.containsKey("t")) {
-        
-
-    client.publish(
-        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/tmp/config").c_str(),
-        (String("{"
-        "\"name\":\"Temperature\","
-        "\"device_class\":\"temperature\","
-        "\"unit_of_measurement\":\"°C\","
-        "\"icon\":\"mdi:thermometer\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/tmp" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_tmp" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-
-    // auto-discovery for Temperature 2
-    if (doc.containsKey("t2")) {
-        
-
-    client.publish(
-        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/tmp2/config").c_str(),
-        (String("{"
-        "\"name\":\"Temperature2\","
-        "\"device_class\":\"temperature\","
-        "\"unit_of_measurement\":\"°C\","
-        "\"icon\":\"mdi:thermometer\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/tmp2" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_tmp2" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-    // auto-discovery for Humidity
-    if (doc.containsKey("hu")) {
-        
-
-    client.publish(
-        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/humidity/config").c_str(),
-        (String("{"
-        "\"name\":\"Humidity\","
-        "\"device_class\":\"humidity\","
-        "\"unit_of_measurement\":\"%\","
-        "\"icon\":\"mdi:water-percent\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/humidity" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_hu" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-    // auto-discovery for Moisture
-    if (doc.containsKey("mo")) {
-        
-
-    client.publish(
-        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/moisture/config").c_str(),
-        (String("{"
-        "\"name\":\"Moisture\","
-        "\"device_class\":\"Moisture\","
-        "\"unit_of_measurement\":\"%\","
-        "\"icon\":\"mdi:water-percent\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/moisture" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_mo" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-
-
-
-    // auto-discovery for Atmospheric pressure
-    if (doc.containsKey("atm")) {
-        
-
-    client.publish(
-        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/pressure/config").c_str(),
-        (String("{"
-        "\"name\":\"Pressure\","
-        "\"device_class\":\"atmospheric_pressure\","
-        "\"unit_of_measurement\":\"kPa\","
-        "\"icon\":\"mdi:gas-cylinder\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/pressure" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_atm" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-
-    // auto-discovery for CO2
-    if (doc.containsKey("cd")) {
-
-    client.publish(
-        (String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/co2/config").c_str(),
-        (String("{"
-        "\"name\":\"Carbon Dioxide\","
-        "\"device_class\":\"carbon_dioxide\","
-        "\"unit_of_measurement\":\"ppm\","
-        "\"icon\":\"mdi:molecule-co2\","
-        "\"state_topic\":\"") + String(SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/co2" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_cd" +"\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-
-    // auto-discovery for Button
-    if (doc.containsKey("bt")) {
-        
-
-    client.publish(
-        (String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/button/config").c_str(),
-        (String("{"
-        "\"name\":\"Button\","
-        "\"icon\":\"mdi:button-pointer\","
-        "\"state_topic\":\"") + String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/button" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_bt" +"\","
-        "\"payload_on\":\"on\","
-        "\"payload_off\":\"off\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-
-
-    // auto-discovery for Motion
-    if (doc.containsKey("m")) {
-        
-
-    client.publish(
-        (String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/motion/config").c_str(),
-        (String("{"
-        "\"name\":\"Motion\","
-        "\"device_class\":\"motion\","
-        "\"icon\":\"mdi:motion\","
-        "\"state_topic\":\"") + String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/motion" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_m" +"\","
-        "\"payload_on\":\"on\","
-        "\"payload_off\":\"off\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-
-    // auto-discovery for door
-    if (doc.containsKey("dr")) {
-
-    client.publish(
-        (String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/door/config").c_str(),
-        (String("{"
-        "\"name\":\"Door\","
-        "\"device_class\":\"door\","
-        "\"icon\":\"mdi:door\","
-        "\"state_topic\":\"") + String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/door" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_door" +"\","
-        "\"payload_on\":\"on\","
-        "\"payload_off\":\"off\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-
-    // auto-discovery for window
-    if (doc.containsKey("wd")) {
-
-    client.publish(
-        (String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/window/config").c_str(),
-        (String("{"
-        "\"name\":\"Window\","
-        "\"device_class\":\"window\","
-        "\"icon\":\"mdi:window-closed\","
-        "\"state_topic\":\"") + String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str()  + "/window" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_window" +"\","
-        "\"payload_on\":\"on\","
-        "\"payload_off\":\"off\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-
-    // auto-discovery for vibration
-    if (doc.containsKey("vb")) {
-
-    client.publish(
-        (String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/vibration/config").c_str(),
-        (String("{"
-        "\"name\":\"Vibration\","
-        "\"device_class\":\"vibration\","
-        "\"icon\":\"mdi:vibrate\","
-        "\"state_topic\":\"") + String(BINARY_SENSOR_TOPIC) + String(received_json_message.id).c_str() + "/vibration" + "\","
-        "\"unique_id\":\"" + String(received_json_message.id).c_str() + "_vibration" +"\","
-        "\"payload_on\":\"on\","
-        "\"payload_off\":\"off\","
-        "\"device\":{\"identifiers\":[\"" + String(received_json_message.id).c_str() + "\"],"
-        "\"name\":\"" + String(received_json_message.id).c_str() +"\","
-        "\"mdl\":\"" + String(received_json_message.id).c_str() +
-        "\",\"mf\":\"PricelessToolkit\"}}").c_str(),
-        MQTT_RETAIN);
-
-      }
-
-
- /////////////////////////////////////////////////////////////////////////////
-
-
-
-    // Determine the topic based on the value of the key
-    String state = doc[key].as<String>();
-    if (state == "on" || state == "off") {
-        // For binary sensors (with states like "on"/"off")
-        client.publish(binTopic.c_str(), value.c_str(), MQTT_RETAIN);
-    } else {
-        // For regular sensors
-        client.publish(topic.c_str(), value.c_str(), MQTT_RETAIN);
-    }
-
-
-
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println();
+    Serial.println("WiFi connected");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
   } else {
-
-    //Serial.print("KEY not faund in JSON");
-
+    Serial.println("\nWiFi connect timeout; continuing, will keep retrying via loop().");
   }
 }
 
-
-
-
-
-void updateMessagesAndPublish(const JsonDocument& doc) {
-  // Only proceed if GATEWAY_KEY matches
-  if (!doc.containsKey("k") || doc["k"].as<String>() != GATEWAY_KEY) {
-    Serial.println("Network Key Not Found or Invalid in JSON");
-    return;
-  }
-
-  // Assuming GATEWAY_KEY matched and "id" is always required
-  received_json_message.id = doc.containsKey("id") ? doc["id"].as<String>() : "";
-
-  // Example usage for different keys | /Topics
-  publishIfKeyExists(doc, "r", "/rssi");
-  publishIfKeyExists(doc, "b", "/batt");
-  publishIfKeyExists(doc, "v", "/volt");
-  publishIfKeyExists(doc, "pw", "/current");
-  publishIfKeyExists(doc, "l", "/lx");
-  publishIfKeyExists(doc, "m", "/motion");
-  publishIfKeyExists(doc, "w", "/weight");
-  publishIfKeyExists(doc, "s", "/state");
-  publishIfKeyExists(doc, "t", "/tmp");
-  publishIfKeyExists(doc, "t2", "/tmp2");
-  publishIfKeyExists(doc, "hu", "/humidity");
-  publishIfKeyExists(doc, "mo", "/moisture");
-  publishIfKeyExists(doc, "rw", "/row");
-  publishIfKeyExists(doc, "bt", "/button");
-  publishIfKeyExists(doc, "atm", "/pressure");
-  publishIfKeyExists(doc, "cd", "/co2");
-  publishIfKeyExists(doc, "dr", "/door");
-  publishIfKeyExists(doc, "wd", "/window");
-  publishIfKeyExists(doc, "vb", "/vibration");
-
-  // Add other keys as needed...
-
-
-}
-
-void parseIncomingPacket(String serialrow) {
-  StaticJsonDocument<1024> doc; // Adjust size as necessary
-
-  DeserializationError error = deserializeJson(doc, serialrow);
-  if (error) {
-    Serial.print("deserializeJson() returned ");
-    Serial.println(error.f_str());
-    return;
-  }
-
-  updateMessagesAndPublish(doc);
-}
-
-
-
-void diag(){
-
-  // Sending diagnostic data every 1m
-  if (millis() -  lastDiagTimer >= diagTimer) { 
-    long rssi = WiFi.RSSI();
- 
-    // send auto-discovery message for CapiBridge Diagnostic rssi
-    client.publish(
-      (String(CAPIBRIDGE_RSSI_TOPIC) + String("/config")).c_str(),
-      (String("{\"name\":\"RSSI\",\"unit_of_measurement\":\"dBm\",\"device_class\":\"signal_strength\",\"icon\":\"mdi:signal\",\"entity_category\":\"diagnostic\",\"state_topic\":\"") + String(CAPIBRIDGE_RSSI_TOPIC) + String("\",\"unique_id\":\"capibridge_rssi\",\"device\":{\"identifiers\":[\"capibridge\"],\"name\":\"CapiBridge\",\"mdl\":\"CapiBridge\",\"mf\":\"PricelessToolkit\"}}")).c_str(),
-      MQTT_RETAIN);
-
-    // Sends RSSI value
-    client.publish("homeassistant/sensor/CapiBridge/rssi", String(rssi).c_str(), MQTT_RETAIN);
-
-      lastDiagTimer = millis();
-    }
-
-}
-
+// ---------- MQTT ----------
 void callback(char* incomingTopic, byte* payload, unsigned int length) {
   String topicStr = String(incomingTopic);
   mqttMessage = "";
@@ -733,13 +98,47 @@ void callback(char* incomingTopic, byte* payload, unsigned int length) {
   }
 }
 
-// -------------------- Xor Encryp/Decrypt -------------------- //
+void reconnect() {
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection... ");
 
-String xorCipher(String input) {
+    client.setBufferSize(2048); // headroom for discovery payloads
+
+    String client_id = "CapiBridge2-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+
+    // Global LWT so entities can use same availability_topic
+    bool ok = client.connect(
+      client_id.c_str(),
+      MQTT_USERNAME, MQTT_PASSWORD,
+      CAPIBRIDGE_LWT_TOPIC, 0, true, AVAIL_OFF
+    );
+
+    if (ok) {
+      Serial.println("MQTT connected");
+      client.setCallback(callback);
+      client.subscribe(CAPIBRIDGE_COMMAND_TOPIC);
+
+      // Bring CapiBridge availability online
+      client.publish(CAPIBRIDGE_LWT_TOPIC, AVAIL_ON, true);
+    } else {
+      Serial.print("MQTT failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 1 second");
+      delay(1000);
+    }
+  }
+}
+
+
+
+/*
+
+// ---------- XOR cipher (optional) ----------
+String xorCipher(const String& input) {
   const byte key[] = encryption_key;
   const int keyLength = encryption_key_length;
-
-  String output = "";
+  String output;
+  output.reserve(input.length());
   for (int i = 0; i < input.length(); i++) {
     byte keyByte = key[i % keyLength];
     output += char(input[i] ^ keyByte);
@@ -747,87 +146,538 @@ String xorCipher(String input) {
   return output;
 }
 
-void SendCommands() {
-  if (newCommandReceived) {
-    Serial.println("MQTT Command Received: " + mqttMessage);
-    digitalWrite(LED_PIN, LOW);                 // Enabling LED_PIN
-    LedStartTime = millis();                    // LED Timer Start
-    
-    #if Encryption
-    mqttMessage = xorCipher(mqttMessage);
-    #endif
+*/
 
-    LoRa.beginPacket();
-    LoRa.print(mqttMessage);
-    LoRa.endPacket();
 
-    client.publish(CAPIBRIDGE_COMMAND_TOPIC, "", true); // reset
-    newCommandReceived = false;
+// ------------------- XOR + BASE 64 ------------------//
+
+// config.h has:
+// #define encryption_key_length 4
+// #define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }
+
+String xorCipher(String in) {
+
+  // 1) Use an ARRAY, not a pointer, for the macro initializer
+  static const uint8_t key[] = encryption_key;
+  const int K = encryption_key_length;
+
+  auto isB64 = [](const String& s)->bool{
+    if (s.length() % 4) return false;
+    for (size_t i=0;i<s.length();++i){
+      char c=s[i];
+      if (!((c>='A'&&c<='Z')||(c>='a'&&c<='z')||(c>='0'&&c<='9')||c=='+'||c=='/'||c=='=')) return false;
+    }
+    return true;
+  };
+
+  auto b64enc = [](const uint8_t* b, size_t n)->String{
+    static const char T[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    String o; o.reserve(((n+2)/3)*4);
+    for(size_t i=0;i<n;i+=3){
+      uint32_t v = ((uint32_t)b[i] << 16)
+                 | ((i+1<n ? (uint32_t)b[i+1] : 0) << 8)
+                 |  (i+2<n ? (uint32_t)b[i+2] : 0);
+      o += T[(v>>18)&63]; o += T[(v>>12)&63];
+      o += (i+1<n) ? T[(v>>6)&63] : '=';
+      o += (i+2<n) ? T[v&63]      : '=';
+    }
+    return o;
+  };
+
+  auto b64val = [](char c)->int{
+    if(c>='A'&&c<='Z') return c-'A';
+    if(c>='a'&&c<='z') return 26+c-'a';
+    if(c>='0'&&c<='9') return 52+c-'0';
+    if(c=='+') return 62;
+    if(c=='/') return 63;
+    return -1;
+  };
+
+  auto b64dec = [&](const String& s)->String{
+    String o; o.reserve((s.length()/4)*3);
+    for(size_t i=0;i<s.length(); i+=4){
+      int a=b64val(s[i]), b=b64val(s[i+1]);
+      int c = (s[i+2]=='=') ? -1 : b64val(s[i+2]);
+      int d = (s[i+3]=='=') ? -1 : b64val(s[i+3]);
+
+      // 2) Upcast before shifting (AVR int is 16-bit)
+      uint32_t v = ((uint32_t)(a & 63) << 18)
+                 | ((uint32_t)(b & 63) << 12)
+                 | ((uint32_t)((c < 0 ? 0 : (c & 63))) << 6)
+                 |  (uint32_t)((d < 0 ? 0 : (d & 63)));
+
+      o += (char)((v >> 16) & 0xFF);
+      if (c >= 0) o += (char)((v >> 8) & 0xFF);
+      if (d >= 0) o += (char)(v & 0xFF);
+    }
+    return o;
+  };
+
+  if (isB64(in)) {                 // decrypt: Base64 -> XOR -> JSON
+    String bytes = b64dec(in);
+    String out; out.reserve(bytes.length());
+    for (size_t i=0;i<bytes.length();++i)
+      out += (char)(((uint8_t)bytes[i]) ^ key[i % K]);
+    return out;
+  } else {                         // encrypt: JSON -> XOR -> Base64
+    String x; x.reserve(in.length());
+    for (size_t i=0;i<in.length();++i)
+      x += (char)(((uint8_t)in[i]) ^ key[i % K]);
+    return b64enc((const uint8_t*)x.c_str(), x.length());
   }
 }
 
 
 
-void loop() {
+//---------------------- XOR END ----------------------//
 
-  if (Serial1.available() > 0) {
-    // read the incoming string:
-    String serialrow = Serial1.readStringUntil('\n');
-    parseIncomingPacket(serialrow);
-    Serial.print("ESP-NOW Message: ");
-    Serial.println(serialrow);
-    
+
+
+// ---------- Discovery builders ----------
+void publishSensorDiscoveryOnce(
+  const String& nodeId,
+  const String& suffix,
+  const String& friendlyName,
+  const String& icon,
+  const String& device_class,
+  const String& unit,
+  bool isBinarySensor,
+  bool hasStateClassMeasurement,
+  bool isDiagnostic = false
+) {
+  #if !DISCOVERY_EVERY_PACKET
+    if (discoveryPublishedFor(nodeId, suffix)) return;
+  #endif
+
+
+  StaticJsonDocument<768> cfg;
+  cfg["name"] = friendlyName;
+  if (icon.length()) cfg["icon"] = icon;
+  if (device_class.length()) cfg["device_class"] = device_class;
+  if (unit.length()) cfg["unit_of_measurement"] = unit;
+
+  // mark as diagnostic if requested
+  if (isDiagnostic) {
+    cfg["entity_category"] = "diagnostic";
   }
 
+  // State + availability
+  String baseStateTopic = String(isBinarySensor ? BINARY_SENSOR_TOPIC : SENSOR_TOPIC) + nodeId + suffix;
+  cfg["state_topic"] = baseStateTopic;
+  cfg["unique_id"] = nodeId + suffix;
+  cfg["availability_topic"] = CAPIBRIDGE_LWT_TOPIC;
 
-  if (LoRa.parsePacket()) {
-    String recv = "";
-    while (LoRa.available()) {
-      recv += static_cast<char>(LoRa.read());
-      digitalWrite(LED_PIN, LOW);                 // Enabling LED_PIN
-      LedStartTime = millis();                    // LED Timer Start
+  // Binary payload mapping (we publish "on"/"off")
+  if (isBinarySensor) {
+    cfg["payload_on"]  = "on";
+    cfg["payload_off"] = "off";
+  }
+
+  // state_class where useful
+  if (hasStateClassMeasurement) {
+    cfg["state_class"] = "measurement";
+  }
+
+  // Proper HA device object
+  JsonObject dev = cfg.createNestedObject("device");
+  dev["identifiers"].add(nodeId);
+  dev["name"] = nodeId;
+  dev["model"] = nodeId;                   // or a real model label
+  dev["manufacturer"] = "PricelessToolkit";
+
+  String payload;
+  serializeJson(cfg, payload);
+
+  String configTopic = String(isBinarySensor ? BINARY_SENSOR_TOPIC : SENSOR_TOPIC) + nodeId + suffix + "/config";
+  client.publish(configTopic.c_str(), payload.c_str(), MQTT_RETAIN);
+
+  #if !DISCOVERY_EVERY_PACKET
+  markDiscoveryPublished(nodeId, suffix);
+  #endif
+}
+
+// ---------- Publishing states (with light formatting) ----------
+static String fmtFloat(double v, uint8_t digits) {
+  char buf[32];
+  dtostrf(v, 0, digits, buf);
+  return String(buf);
+}
+
+// Publish a single key if present.
+// topicSuffix must match what discovery used.
+void publishKeyIfPresent(const JsonDocument& doc, const char* key, const String& nodeId, const String& topicSuffix, bool isBinary, bool convertForHA = false) {
+  if (!doc.containsKey(key)) return;
+
+  String stateTopic = String(isBinary ? BINARY_SENSOR_TOPIC : SENSOR_TOPIC) + nodeId + topicSuffix;
+
+  if (isBinary) {
+    // Normalize to "on"/"off"
+    String val = doc[key].as<String>();
+    val.toLowerCase();
+    if (val == "1" || val == "true") val = "on";
+    if (val == "0" || val == "false") val = "off";
+    if (val != "on" && val != "off") {
+      val = (doc[key].as<String>().length() > 0) ? "on" : "off";
+    }
+    client.publish(stateTopic.c_str(), val.c_str(), MQTT_RETAIN);
+  } else {
+    if (doc[key].is<float>() || doc[key].is<double>() || doc[key].is<long>() || doc[key].is<int>()) {
+      double v = doc[key].as<double>();
+      if (convertForHA) v = v / 1000.0;       // mA -> A for "pw"
+      String val = fmtFloat(v, convertForHA ? 3 : 2);
+      client.publish(stateTopic.c_str(), val.c_str(), MQTT_RETAIN);
+    } else {
+      String val = doc[key].as<String>();
+      client.publish(stateTopic.c_str(), val.c_str(), MQTT_RETAIN);
+    }
+  }
+}
+
+// ---------- Map JSON -> entities (discovery + state) ----------
+void ensureDiscoveryAndPublish(const JsonDocument& doc) {
+  // Only proceed if GATEWAY_KEY matches
+  if (!doc.containsKey("k") || doc["k"].as<String>() != GATEWAY_KEY) {
+    Serial.println("Network Key Not Found or Invalid in JSON");
+    return;
+  }
+  if (!doc.containsKey("id")) {
+    Serial.println("Missing 'id' in JSON");
+    return;
+  }
+
+  String id = doc["id"].as<String>();
+
+  // ---- Discovery (only once per id+key) ----
+  // Numeric sensors
+  if (doc.containsKey("r"))   publishSensorDiscoveryOnce(id, "/rssi",     "RSSI",          "mdi:signal",         "signal_strength", "dBm", false, true, true);
+  if (doc.containsKey("b"))   publishSensorDiscoveryOnce(id, "/batt",     "Battery",       "mdi:battery",        "battery",         "%",   false, true, true);
+  if (doc.containsKey("v"))   publishSensorDiscoveryOnce(id, "/volt",     "Volt",          "mdi:flash-triangle", "voltage",         "V",   false, true);
+  if (doc.containsKey("pw"))  publishSensorDiscoveryOnce(id, "/current",  "Current",       "mdi:current-dc",     "current",         "A",   false, true); // mA -> A
+  if (doc.containsKey("l"))   publishSensorDiscoveryOnce(id, "/lx",       "Lux",           "mdi:brightness-1",   "illuminance",     "lx",  false, true);
+  if (doc.containsKey("w"))   publishSensorDiscoveryOnce(id, "/weight",   "Weight",        "mdi:weight",         "weight",          "g",   false, true);
+  if (doc.containsKey("t"))   publishSensorDiscoveryOnce(id, "/tmp",      "Temperature",   "mdi:thermometer",    "temperature",     "°C",  false, true);
+  if (doc.containsKey("t2"))  publishSensorDiscoveryOnce(id, "/tmp2",     "Temperature 2", "mdi:thermometer",    "temperature",     "°C",  false, true);
+  if (doc.containsKey("hu"))  publishSensorDiscoveryOnce(id, "/humidity", "Humidity",      "mdi:water-percent",  "humidity",        "%",   false, true);
+  if (doc.containsKey("mo"))  publishSensorDiscoveryOnce(id, "/moisture", "Moisture",      "mdi:water-percent",  "moisture",        "%",   false, true);
+  if (doc.containsKey("atm")) publishSensorDiscoveryOnce(id, "/pressure", "Pressure",      "mdi:gauge",          "pressure",        "kPa", false, true);
+  if (doc.containsKey("cd"))  publishSensorDiscoveryOnce(id, "/co2",      "Carbon Dioxide","mdi:molecule-co2",   "carbon_dioxide",  "ppm", false, true);
+
+  // Text sensors
+  if (doc.containsKey("rw"))  publishSensorDiscoveryOnce(id, "/row",      "Text",          "mdi:text",           "",                "",    false, false);
+  if (doc.containsKey("s"))   publishSensorDiscoveryOnce(id, "/state",    "State",         "mdi:list-status",    "",                "",    false, false);
+
+  // Binary sensors (on/off)
+  if (doc.containsKey("bt"))  publishSensorDiscoveryOnce(id, "/button",   "Button",        "mdi:button-pointer", "",                "",    true,  false);
+  if (doc.containsKey("m"))   publishSensorDiscoveryOnce(id, "/motion",   "Motion",        "mdi:motion",         "motion",          "",    true,  false);
+  if (doc.containsKey("dr"))  publishSensorDiscoveryOnce(id, "/door",     "Door",          "mdi:door",           "door",            "",    true,  false);
+  if (doc.containsKey("wd"))  publishSensorDiscoveryOnce(id, "/window",   "Window",        "mdi:window-closed",  "window",          "",    true,  false);
+  if (doc.containsKey("vb"))  publishSensorDiscoveryOnce(id, "/vibration","Vibration",     "mdi:vibrate",        "vibration",       "",    true,  false);
+
+  // ---- State publish ----
+  publishKeyIfPresent(doc, "r",   id, "/rssi",     false);
+  publishKeyIfPresent(doc, "b",   id, "/batt",     false);
+  publishKeyIfPresent(doc, "v",   id, "/volt",     false);
+  publishKeyIfPresent(doc, "pw",  id, "/current",  false, true); // mA -> A
+  publishKeyIfPresent(doc, "l",   id, "/lx",       false);
+  publishKeyIfPresent(doc, "w",   id, "/weight",   false);
+  publishKeyIfPresent(doc, "t",   id, "/tmp",      false);
+  publishKeyIfPresent(doc, "t2",  id, "/tmp2",     false);
+  publishKeyIfPresent(doc, "hu",  id, "/humidity", false);
+  publishKeyIfPresent(doc, "mo",  id, "/moisture", false);
+  publishKeyIfPresent(doc, "rw",  id, "/row",      false);
+  publishKeyIfPresent(doc, "s",   id, "/state",    false);
+  publishKeyIfPresent(doc, "atm", id, "/pressure", false);
+  publishKeyIfPresent(doc, "cd",  id, "/co2",      false);
+  publishKeyIfPresent(doc, "bt",  id, "/button",   true);
+  publishKeyIfPresent(doc, "m",   id, "/motion",   true);
+  publishKeyIfPresent(doc, "dr",  id, "/door",     true);
+  publishKeyIfPresent(doc, "wd",  id, "/window",   true);
+  publishKeyIfPresent(doc, "vb",  id, "/vibration",true);
+}
+
+// ---------- JSON parsing ----------
+void parseIncomingPacket(const String& serialrow) {
+  StaticJsonDocument<2048> doc; // more headroom
+  DeserializationError error = deserializeJson(doc, serialrow);
+  if (error) {
+    Serial.print("deserializeJson() returned ");
+    Serial.println(error.f_str());
+    return;
+  }
+  ensureDiscoveryAndPublish(doc);
+}
+
+// ---------- Diagnostics ----------
+void diag() {
+  if (millis() - lastDiagTimer >= diagTimer) {
+    long rssi = WiFi.RSSI();
+
+    // Auto-discovery for CapiBridge diagnostic RSSI (only once)
+    static bool diagDiscoverySent = false;
+    if (!diagDiscoverySent) {
+      StaticJsonDocument<384> cfg;
+      cfg["name"] = "RSSI";
+      cfg["unit_of_measurement"] = "dBm";
+      cfg["device_class"] = "signal_strength";
+      cfg["icon"] = "mdi:signal";
+      cfg["entity_category"] = "diagnostic";
+      cfg["state_topic"] = CAPIBRIDGE_RSSI_TOPIC;
+      cfg["unique_id"] = "capibridge_rssi";
+      JsonObject dev = cfg.createNestedObject("device");
+      dev["identifiers"].add("capibridge");
+      dev["name"] = "CapiBridge";
+      dev["model"] = "CapiBridge";
+      dev["manufacturer"] = "PricelessToolkit";
+      String payload;
+      serializeJson(cfg, payload);
+      client.publish((String(CAPIBRIDGE_RSSI_TOPIC) + "/config").c_str(), payload.c_str(), MQTT_RETAIN);
+      diagDiscoverySent = true;
     }
 
-    //Serial.print("LoRa ROW Message: ");
-    //Serial.println(recv);
-    //Serial.println(" ");
+    // Sends RSSI value
+    client.publish(CAPIBRIDGE_RSSI_TOPIC, String(rssi).c_str(), MQTT_RETAIN);
+    lastDiagTimer = millis();
+  }
+}
+
+
+// ---------- Command paths ----------
+void SendLoRaCommands() {
+  if (newCommandReceived && mqttMessage.indexOf("\"rm\":\"lora\"") != -1) {
+    // Temporarily disable the DIxx interrupt so the TX-done pulse isn't mistaken for RX-done.
+    DETACH_IRQ();
+
+    // Indicate “sending” with the LED
+    digitalWrite(LED_PIN, LOW);
+    LedStartTime = millis();
+
+    // --- strip "rm" from payload (keep everything else) ---
+    String cleaned = mqttMessage;
+    {
+      StaticJsonDocument<2048> doc;
+      DeserializationError e = deserializeJson(doc, mqttMessage);
+      if (!e) {
+        doc.remove("rm");           // remove the routing hint
+        cleaned = "";
+        serializeJson(doc, cleaned);
+      } // if parse fails, fall back to original message (no strip)
+    }
+
     #if Encryption
-    recv = xorCipher(recv);
+      mqttMessagexor = xorCipher(cleaned);
+    #else
+      mqttMessagexor = cleaned;
     #endif
-    Serial.print("LoRa JSON Message: ");
-    
-    if (client.connected()) {
-      //////////////// Inserting RSSI ///////////////////
-      // Prepare the string to insert
-      String insertString = ",\"r\":" + String(LoRa.packetRssi());
-      // Find the position of the last closing brace '}'
-      int position = recv.lastIndexOf('}');
-      // Assuming the position is valid and the JSON string is well-formed
-      if (position != -1) {
-          // Insert the new key-value pair before the last closing brace
-          recv = recv.substring(0, position) + insertString + recv.substring(position);
-          Serial.println(recv);
+
+    int state = radio.transmit(mqttMessagexor);
+    if (state == RADIOLIB_ERR_NONE) {
+      Serial.print("LoRa Command sent: ");
+      Serial.println(cleaned);
+    } else {
+      Serial.print("Failed to send Command, code ");
+      Serial.println(state);
+    }
+
+    // Reset the MQTT command topic so it won't re-trigger on reconnect
+    client.publish(CAPIBRIDGE_COMMAND_TOPIC, "", true);
+    newCommandReceived = false;
+
+    SET_DIO_ACTION(radio, onReceive);
+
+    // Clear any RX flag we may have picked up spuriously
+    packetReceived = false;
+
+    // Go back into non-blocking receive
+    if (radio.startReceive(0) != RADIOLIB_ERR_NONE) {
+      Serial.println("Failed to restart RX");
+    }
+  }
+}
+
+void SendESPNOWCommands() {
+  if (newCommandReceived && mqttMessage.indexOf("\"rm\":\"espnow\"") != -1) {
+    if (Serial1.available() == 0) {
+
+      // --- strip "rm" from payload (keep everything else) ---
+      String cleaned = mqttMessage;
+      {
+        StaticJsonDocument<2048> doc;
+        DeserializationError e = deserializeJson(doc, mqttMessage);
+        if (!e) {
+          doc.remove("rm");         // remove the routing hint
+          cleaned = "";
+          serializeJson(doc, cleaned);
+        } // if parse fails, fall back to original message (no strip)
       }
-      
-      // Print the modified string
+/*
+      String payload;
+      #if Encryption
+        payload = xorCipher(cleaned);
+      #else
+        payload = cleaned;
+      #endif
+
+      Serial1.print(payload);
+*/
+      Serial.print("ESP-NOW Command sent: ");
+      Serial.println(cleaned);
+
+      client.publish(CAPIBRIDGE_COMMAND_TOPIC, "", true);
+      newCommandReceived = false;
+    }
+  }
+}
+
+void printLoRaConfig() {
+  Serial.print(F("Frequency Band: "));
+  Serial.print(BAND, 1);
+  Serial.println(F(" MHz"));
+
+  Serial.print(F("TX Power: "));
+  Serial.print(LORA_TX_POWER);
+  Serial.println(F(" dBm"));
+
+  Serial.print(F("Signal Bandwidth: "));
+  Serial.print(LORA_SIGNAL_BANDWIDTH, 1);
+  Serial.println(F(" kHz"));
+
+  Serial.print(F("Spreading Factor: SF"));
+  Serial.println(LORA_SPREADING_FACTOR);
+
+  Serial.print(F("Coding Rate: 4/"));
+  Serial.println(LORA_CODING_RATE);
+
+  Serial.print(F("Sync Word: 0x"));
+  Serial.println(LORA_SYNC_WORD, HEX);
+
+  Serial.print(F("Preamble Length: "));
+  Serial.println(LORA_PREAMBLE_LENGTH);
+
+  Serial.println(F("=============================="));
+}
+
+// ---------- Setup / Loop ----------
+void setup() {
+  Serial1.begin(BAUD, SERIAL_8N1, RXPIN, TXPIN); // Serial between ESP1 and ESP2
+  Serial.begin(115200);
+
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH);   // active-low: HIGH = OFF
+
+  setup_wifi();
+
+  client.setBufferSize(2048);
+  client.setServer(MQTT_SERVER, MQTT_PORT);
+  reconnect();
+
+  // SPI + Radio
+  SPI.begin(CONFIG_CLK, CONFIG_MISO, CONFIG_MOSI, CONFIG_NSS);
+
+  #if (LORA_MODULE == LORA_MODULE_SX1276)
+    Serial.println("LoRa Ra-01H SX1276 initialization...");
+    printLoRaConfig();
+
+  #else
+    Serial.println("LoRa Ra-01SH SX1262 initialization...");
+    printLoRaConfig();
+  #endif
+
+  int state = RADIO_BEGIN(radio);
+
+  if (state == RADIOLIB_ERR_NONE) {
+    Serial.println(F("----- All set, waiting for incoming JSON payloads -----"));
+  } else {
+    Serial.print(F("LoRa init failed, code "));
+    Serial.println(state);
+    while (true) { delay(10); }
+  }
+
+  SET_DIO_ACTION(radio, onReceive);
+  if (radio.startReceive(0) != RADIOLIB_ERR_NONE) {
+    Serial.println(F("Failed to start non-blocking RX"));
+  }
+
+}
+
+void loop() {
+  // 1) Handle any ESP-NOW packets coming in over Serial1
+if (Serial1.available() > 0) {
+  String serialrow = Serial1.readStringUntil('\n');  // we know sender prints \r\n
+
+  Serial.print("ESP-NOW ROW Message Received: ");
+  Serial.println(serialrow);
+/*
+  #if Encryption
+    serialrow = xorCipher(serialrow);
+  #endif
+*/
+  parseIncomingPacket(serialrow);
+  Serial.print("ESP-NOW Message Received: ");
+  Serial.println(serialrow);
+}
+
+  // 2) Check for a completed LoRa packet
+  if (packetReceived) {
+    packetReceived = false;
+
+    String recv;
+    int16_t state = radio.readData(recv); // Non-blocking read
+
+    if (state == RADIOLIB_ERR_NONE) {
+      // Indicate reception
+      digitalWrite(LED_PIN, LOW);
+      LedStartTime = millis();
+
+
+      //Serial.print("LoRa ROW Message: ");
       //Serial.println(recv);
-      // Parsing modified JSON string
-      parseIncomingPacket(recv);
-      
-    }
-   }
+      //Serial.println(" ");
+      #if Encryption
+        recv = xorCipher(recv);
+      #endif
 
-  if (millis() -  LedStartTime >= 100) {       // Turning OFF LED_PIN after 100ms
-      digitalWrite(LED_PIN, HIGH);             // HIGH = LED is OFF    
+      // Safer RSSI injection: parse -> set -> publish
+      StaticJsonDocument<2048> rx;
+      DeserializationError e = deserializeJson(rx, recv);
+      if (!e) {
+        rx["r"] = radio.getRSSI();
+        ensureDiscoveryAndPublish(rx);
+        Serial.print("LoRa Message Received: ");
+        serializeJson(rx, Serial);
+        Serial.println();
+      } else {
+        Serial.print("RX JSON parse error: ");
+        Serial.println(e.f_str());
+      }
+    } else {
+      Serial.print("readData() error ");
+      Serial.println(state);
     }
 
-  if (client.connected()) {
-      diag();
+    // Restart listening for the next packet immediately
+    radio.startReceive(0);
+  }
+
+  // 3) Turn off LED after 100 ms
+  if (millis() - LedStartTime >= 100) {
+    digitalWrite(LED_PIN, HIGH);
+  }
+
+  // 4) Connectivity/MQTT
+  if (WiFi.status() != WL_CONNECTED) {
+    static unsigned long lastWifiTry = 0;
+    if (millis() - lastWifiTry > 5000) {
+      WiFi.reconnect();
+      lastWifiTry = millis();
     }
+  }
 
   if (!client.connected()) {
-      reconnect();
-    }
+    reconnect();
+  }
+
   client.loop();
-  SendCommands();      // Sends if new command was received
+  diag();
+  SendESPNOWCommands();
+  SendLoRaCommands();
 }
