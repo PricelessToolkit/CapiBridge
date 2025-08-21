@@ -168,6 +168,16 @@ ____________
 
 ```
 
+#### Select the LoRa module that CapiBridge uses.
+
+```cpp
+
+//#define LORA_MODULE LORA_MODULE_SX1276  // SX1276 Module (orders shipped before Aug 2025)
+#define LORA_MODULE LORA_MODULE_SX1262  // SX1262 Module CapiBridge v2 (orders shipped after Aug 2025)
+
+```
+
+
 #### WIFI Configuration
 
 ```cpp
