@@ -45,8 +45,12 @@ ____________
 
 
 ## 📣 Updates, Bugfixes, and Breaking Changes
-- 28.07.2025 - Hardware modification, The new LoRa module RA-01SH "SX1262"
-- - Using a SX1262 compartible library.
+- 18.08.2025 - Hardware modification, The new LoRa module RA-01SH "SX1262"
+- - Added option to select LoRA module type via config.
+```c
+     //#define LORA_MODULE LORA_MODULE_SX1276  // SX1276 Module (orders shipped before Aug 2025)
+   #define LORA_MODULE LORA_MODULE_SX1262  // SX1262 Module CapiBridge v2 (orders shipped after Aug 2025)
+```
 - 22.05.2025 - Breaking Change (XOR obfuscation "Encryption" for LoRa).
 - - All LoRa sensors' firmware needs to be updated.
 - 14.05.2025 - [2-way communication,](https://github.com/PricelessToolkit/CapiBridge/tree/main?tab=readme-ov-file#-2-way-communication--sending-commands) for now only "LoRa".
@@ -98,7 +102,7 @@ ____________
 ```c
 #include <Arduino.h>
 #include <SPI.h>
-#include <LoRa.h>
+#include <RadioLib.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -164,57 +168,56 @@ ____________
 
 ```
 
-#### WIFI and MQTT Server Configuration
+#### Select the LoRa module that CapiBridge uses.
 
 ```cpp
-#define WIFI_SSID "your_wifi_ssid"
-#define WIFI_PASSWORD "your_wifi_passwd"
-#define MQTT_USERNAME "your_mqtt_user"
-#define MQTT_PASSWORD "your_mqtt_passwd"
-#define MQTT_SERVER "your_mqtt_broker_address"
+
+//#define LORA_MODULE LORA_MODULE_SX1276  // SX1276 Module (orders shipped before Aug 2025)
+#define LORA_MODULE LORA_MODULE_SX1262  // SX1262 Module CapiBridge v2 (orders shipped after Aug 2025)
+
+```
+
+
+#### WIFI Configuration
+
+```cpp
+#define WIFI_SSID ""
+#define WIFI_PASSWORD ""
+
+```
+#### MQTT Server Configuration
+
+```cpp
+#define MQTT_USERNAME ""
+#define MQTT_PASSWORD ""
+#define MQTT_SERVER ""
 #define MQTT_PORT 1883
+#define DISCOVERY_EVERY_PACKET true      // true  = publish discovery every time data is received from that sensor
+                                         // false = publish discovery once per CapiBridge boot (remembers if that sensor is already published)
+                                         // Using false reduces MQTT traffic, but if you delete a sensor in Home Assistant,
+                                         // you must reboot CapiBridge to clear the cache so it can rediscover that sensor
 
 ```
 #### LoRa Configuration
 
 > [!IMPORTANT]
-> 1. LoRa configuration must match the configuration in Nodes/Sensors.
-> 2. For "RA-01H SX1276" and "RA-01SH SX1262" configuration is different
-
-Configuration for LoRa module "RA-01H" Rf chip "SX1276"
-All orders before 29/07/2025
+> LoRa configuration must match the configuration in Nodes/Sensors.
 
 ```cpp
 
-#define SIGNAL_BANDWITH 125E3  // signal bandwidth in Hz, defaults to 125E3
-#define SPREADING_FACTOR 8    // ranges from 6-12, default 7 see API docs
-#define CODING_RATE 5          // Supported values are between 5 and 8
-#define SYNC_WORD 0x12         // Dont use LoRaWAN/TTN "0x34"
-#define PREAMBLE_LENGTH 6      // Supported values are between 6 and 65535.
-#define TX_POWER 20            // TX power in dB, defaults to 17, Supported values are 2 to 20
-#define BAND 433E6             // 433E6 / 868E6 / 915E6 - Depends on what board you bought.
+#define BAND 868.0                       // 433.0 / 868.0 / 915.0
+#define LORA_TX_POWER 20                 // dBm; check regulatory limits in your region (SX1262 supports up to 22) (SX1276 supports up to 20)
 
-```
+/// Bandwidth vs SF support (SX126x):
+// 125 kHz: SF5–SF9
+// 250 kHz: SF5–SF10
+// 500 kHz: SF5–SF11
 
-Configuration for the newer LoRa module "RA-01SH" RF chip is "SX1262"
-All orders after 29/07/2025
-
-```cpp
-
-#define BAND 868.0                  // 433.0 / 868.0 / 915.0
-#define LORA_TX_POWER 22            // TX power in dB. Supported values are 2 to 22
-
-//| Bandwidth | Supported Spreading Factors |
-//|-----------|-----------------------------|
-//| 125 kHz   | SF5 – SF9                   |
-//| 250 kHz   | SF5 – SF10                  |
-//| 500 kHz   | SF5 – SF11                  |
-
-#define LORA_SIGNAL_BANDWIDTH 250.0  // signal bandwidth in KHz, defaults to 125.0, 250.0, 500.0
-#define LORA_SPREADING_FACTOR 10     // ranges from 5-11
-#define LORA_CODING_RATE 5           // Supported values are between 5 and 8, these correspond to coding rates of 4/5 and 4/8. The coding rate numerator is fixed at 4.
-#define LORA_SYNC_WORD 0x12          // byte value to use as the sync word, defaults to 0x12
-#define LORA_PREAMBLE_LENGTH 12      // Supported values are between 6 and 65535.
+#define LORA_SIGNAL_BANDWIDTH 250.0     // kHz: 125.0, 250.0, 500.0
+#define LORA_SPREADING_FACTOR 10        // "5–11 on SX1262" "6-12 on SX1276"
+#define LORA_CODING_RATE 5              // 5–8 → coding rate 4/5 .. 4/8
+#define LORA_SYNC_WORD 0x12             // Default 0x12 Dont Change
+#define LORA_PREAMBLE_LENGTH 12         // 6..65535
 
 ```
 
@@ -308,19 +311,87 @@ The simplest way to create a JSON String without the ArduinoJson.h library and t
                                                    // Example: { 0x1F, 0x7E, 0xC2, 0x5A }  ➜ 4-byte key.
 
 
-// -------------------- Xor Encrypt/Decrypt -------------------- //
+// ------------------- XOR + BASE 64 ------------------//
 
-String xorCipher(String input) {
-  const byte key[] = encryption_key;
-  const int keyLength = encryption_key_length;
+// config.h has:
+// #define encryption_key_length 4
+// #define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }
 
-  String output = "";
-  for (int i = 0; i < input.length(); i++) {
-    byte keyByte = key[i % keyLength];
-    output += char(input[i] ^ keyByte);
+String xorCipher(String in) {
+
+  // 1) Use an ARRAY, not a pointer, for the macro initializer
+  static const uint8_t key[] = encryption_key;
+  const int K = encryption_key_length;
+
+  auto isB64 = [](const String& s)->bool{
+    if (s.length() % 4) return false;
+    for (size_t i=0;i<s.length();++i){
+      char c=s[i];
+      if (!((c>='A'&&c<='Z')||(c>='a'&&c<='z')||(c>='0'&&c<='9')||c=='+'||c=='/'||c=='=')) return false;
+    }
+    return true;
+  };
+
+  auto b64enc = [](const uint8_t* b, size_t n)->String{
+    static const char T[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    String o; o.reserve(((n+2)/3)*4);
+    for(size_t i=0;i<n;i+=3){
+      uint32_t v = ((uint32_t)b[i] << 16)
+                 | ((i+1<n ? (uint32_t)b[i+1] : 0) << 8)
+                 |  (i+2<n ? (uint32_t)b[i+2] : 0);
+      o += T[(v>>18)&63]; o += T[(v>>12)&63];
+      o += (i+1<n) ? T[(v>>6)&63] : '=';
+      o += (i+2<n) ? T[v&63]      : '=';
+    }
+    return o;
+  };
+
+  auto b64val = [](char c)->int{
+    if(c>='A'&&c<='Z') return c-'A';
+    if(c>='a'&&c<='z') return 26+c-'a';
+    if(c>='0'&&c<='9') return 52+c-'0';
+    if(c=='+') return 62;
+    if(c=='/') return 63;
+    return -1;
+  };
+
+  auto b64dec = [&](const String& s)->String{
+    String o; o.reserve((s.length()/4)*3);
+    for(size_t i=0;i<s.length(); i+=4){
+      int a=b64val(s[i]), b=b64val(s[i+1]);
+      int c = (s[i+2]=='=') ? -1 : b64val(s[i+2]);
+      int d = (s[i+3]=='=') ? -1 : b64val(s[i+3]);
+
+      // 2) Upcast before shifting (AVR int is 16-bit)
+      uint32_t v = ((uint32_t)(a & 63) << 18)
+                 | ((uint32_t)(b & 63) << 12)
+                 | ((uint32_t)((c < 0 ? 0 : (c & 63))) << 6)
+                 |  (uint32_t)((d < 0 ? 0 : (d & 63)));
+
+      o += (char)((v >> 16) & 0xFF);
+      if (c >= 0) o += (char)((v >> 8) & 0xFF);
+      if (d >= 0) o += (char)(v & 0xFF);
+    }
+    return o;
+  };
+
+  if (isB64(in)) {                 // decrypt: Base64 -> XOR -> JSON
+    String bytes = b64dec(in);
+    String out; out.reserve(bytes.length());
+    for (size_t i=0;i<bytes.length();++i)
+      out += (char)(((uint8_t)bytes[i]) ^ key[i % K]);
+    return out;
+  } else {                         // encrypt: JSON -> XOR -> Base64
+    String x; x.reserve(in.length());
+    for (size_t i=0;i<in.length();++i)
+      x += (char)(((uint8_t)in[i]) ^ key[i % K]);
+    return b64enc((const uint8_t*)x.c_str(), x.length());
   }
-  return output;
 }
+
+
+
+//---------------------- XOR END ----------------------//
 
 
 
@@ -353,16 +424,24 @@ homeassistant/sensor/CapiBridge/command
 Payload
 
 ```json
-{"k":"xy","id":"PirBoxM","com":"xxxxxx"}
+{"k":"xy","id":"PirBoxM","rm":"lora","com":"xxxxxx"}
+```
+Also, possible sending ESP-NOW payload "work in progress"
+```json
+{"k":"xy","id":"PirBoxM","rm":"espnow","com":"xxxxxx"}
 ```
 
 Descriptions
 
-| Key   | Description                   | Example     |
-|--------|-------------------------------|-------------|
-| `k`    | Private gateway key (auth)     | `"xy"`      |
-| `id`   | Target node name (device ID)   | `"PirBoxM"` |
-| `com`  | Command code (text)   | `"xxxxxx"`      |
+| Key   | Description                     | Example     |
+|-------|---------------------------------|-------------|
+| `k`   | Private gateway key (auth)      | `"xy"`      |
+| `id`  | Target node name (device ID)    | `"PirBoxM"` |
+| `rm`  | Radio mode (`lora` / `espnow`)  | `"lora", "espnow"`    |
+| `com` | Command code (text)             | `"xxxxxx"`  |
+
+
+
 
 ## Troubleshooting
 If your DIY sensor/assembly is not showing up in Home Assistant, here are some tips that may help you find the problem.
