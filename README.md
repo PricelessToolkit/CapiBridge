@@ -302,7 +302,7 @@ Full Suported MQTT-Autodiscovery List
 
 
 
-## ESP-NOW Sensor Broadcast (with optional XOR encryption)
+## ESP-NOW Sensor Example (with optional XOR encryption)
 
 This example broadcasts JSON sensor data from an ESP32 via **ESP-NOW**.  
 You can **enable/disable XOR encryption** with a single switch.
@@ -330,7 +330,7 @@ You can **enable/disable XOR encryption** with a single switch.
 #define SEND_PERIOD_MS       5000
 
 // XOR encryption toggle and key
-#define ENCRYPTION 1   // 0 = off, 1 = on
+#define ENCRYPTION 0   // 0 = off, 1 = on
 #define encryption_key_length 4
 #define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }
 // -----------------------------------
@@ -425,7 +425,13 @@ void loop() {
 👉 full example with all supported keys is available in the `Node_Examples` folder.
 
 
+## LoRa Sensor Example (with optional XOR encryption)
+You can find working code examples in the following repositories:  
+- [MailBoxGuard for "CapiBridge"](https://github.com/PricelessToolkit/MailBoxGuard/blob/main/Code/CapiBridge/Mailbox_Guard_Sensor_CapiBridge/Mailbox_Guard_Sensor_CapiBridge.ino)
+- [PirBOX-LITE](https://github.com/PricelessToolkit/PirBOX-LITE)  
+- [PirBOX-MAX](https://github.com/PricelessToolkit/PirBOX-MAX)  
 
+---
 
 ## XOR Encryption / Decryption Example
 
