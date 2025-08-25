@@ -11,7 +11,7 @@
 // ---------- SX1276 (RA-01H): IRQ on DIO0, no BUSY ----------
   #define RADIO_CLASS SX1276
 
-  // SPI + control pins (move them here if you want all pins in radio.h)
+  // SPI + control pins
   #define CONFIG_MOSI 1
   #define CONFIG_MISO 0
   #define CONFIG_CLK  4

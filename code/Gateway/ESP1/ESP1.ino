@@ -131,102 +131,19 @@ void reconnect() {
 
 
 
-/*
-
-// ---------- XOR cipher (optional) ----------
-String xorCipher(const String& input) {
-  const byte key[] = encryption_key;
-  const int keyLength = encryption_key_length;
-  String output;
-  output.reserve(input.length());
-  for (int i = 0; i < input.length(); i++) {
-    byte keyByte = key[i % keyLength];
-    output += char(input[i] ^ keyByte);
-  }
-  return output;
-}
-
-*/
 
 
-// ------------------- XOR + BASE 64 ------------------//
+// ---------- XOR Buffer (optional) ----------
 
-// config.h has:
-// #define encryption_key_length 4
-// #define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }
 
-String xorCipher(String in) {
+void xorBuffer(uint8_t* buf, size_t len) {
+  const uint8_t key[] = encryption_key;
+  const int keyLen = encryption_key_length;
 
-  // 1) Use an ARRAY, not a pointer, for the macro initializer
-  static const uint8_t key[] = encryption_key;
-  const int K = encryption_key_length;
-
-  auto isB64 = [](const String& s)->bool{
-    if (s.length() % 4) return false;
-    for (size_t i=0;i<s.length();++i){
-      char c=s[i];
-      if (!((c>='A'&&c<='Z')||(c>='a'&&c<='z')||(c>='0'&&c<='9')||c=='+'||c=='/'||c=='=')) return false;
-    }
-    return true;
-  };
-
-  auto b64enc = [](const uint8_t* b, size_t n)->String{
-    static const char T[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    String o; o.reserve(((n+2)/3)*4);
-    for(size_t i=0;i<n;i+=3){
-      uint32_t v = ((uint32_t)b[i] << 16)
-                 | ((i+1<n ? (uint32_t)b[i+1] : 0) << 8)
-                 |  (i+2<n ? (uint32_t)b[i+2] : 0);
-      o += T[(v>>18)&63]; o += T[(v>>12)&63];
-      o += (i+1<n) ? T[(v>>6)&63] : '=';
-      o += (i+2<n) ? T[v&63]      : '=';
-    }
-    return o;
-  };
-
-  auto b64val = [](char c)->int{
-    if(c>='A'&&c<='Z') return c-'A';
-    if(c>='a'&&c<='z') return 26+c-'a';
-    if(c>='0'&&c<='9') return 52+c-'0';
-    if(c=='+') return 62;
-    if(c=='/') return 63;
-    return -1;
-  };
-
-  auto b64dec = [&](const String& s)->String{
-    String o; o.reserve((s.length()/4)*3);
-    for(size_t i=0;i<s.length(); i+=4){
-      int a=b64val(s[i]), b=b64val(s[i+1]);
-      int c = (s[i+2]=='=') ? -1 : b64val(s[i+2]);
-      int d = (s[i+3]=='=') ? -1 : b64val(s[i+3]);
-
-      // 2) Upcast before shifting (AVR int is 16-bit)
-      uint32_t v = ((uint32_t)(a & 63) << 18)
-                 | ((uint32_t)(b & 63) << 12)
-                 | ((uint32_t)((c < 0 ? 0 : (c & 63))) << 6)
-                 |  (uint32_t)((d < 0 ? 0 : (d & 63)));
-
-      o += (char)((v >> 16) & 0xFF);
-      if (c >= 0) o += (char)((v >> 8) & 0xFF);
-      if (d >= 0) o += (char)(v & 0xFF);
-    }
-    return o;
-  };
-
-  if (isB64(in)) {                 // decrypt: Base64 -> XOR -> JSON
-    String bytes = b64dec(in);
-    String out; out.reserve(bytes.length());
-    for (size_t i=0;i<bytes.length();++i)
-      out += (char)(((uint8_t)bytes[i]) ^ key[i % K]);
-    return out;
-  } else {                         // encrypt: JSON -> XOR -> Base64
-    String x; x.reserve(in.length());
-    for (size_t i=0;i<in.length();++i)
-      x += (char)(((uint8_t)in[i]) ^ key[i % K]);
-    return b64enc((const uint8_t*)x.c_str(), x.length());
+  for (size_t i = 0; i < len; ++i) {
+    buf[i] ^= key[i % keyLen];
   }
 }
-
 
 
 //---------------------- XOR END ----------------------//
@@ -463,13 +380,18 @@ void SendLoRaCommands() {
       } // if parse fails, fall back to original message (no strip)
     }
 
-    #if Encryption
-      mqttMessagexor = xorCipher(cleaned);
+    #if LoRa_Encryption
+      size_t len = cleaned.length();
+      uint8_t buf[len];
+      memcpy(buf, cleaned.c_str(), len);
+
+      xorBuffer(buf, len);                // apply XOR in-place
+      int state = radio.transmit(buf, len);
     #else
-      mqttMessagexor = cleaned;
+      int state = radio.transmit(cleaned);
     #endif
 
-    int state = radio.transmit(mqttMessagexor);
+
     if (state == RADIOLIB_ERR_NONE) {
       Serial.print("LoRa Command sent: ");
       Serial.println(cleaned);
@@ -494,6 +416,7 @@ void SendLoRaCommands() {
   }
 }
 
+
 void SendESPNOWCommands() {
   if (newCommandReceived && mqttMessage.indexOf("\"rm\":\"espnow\"") != -1) {
     if (Serial1.available() == 0) {
@@ -509,16 +432,22 @@ void SendESPNOWCommands() {
           serializeJson(doc, cleaned);
         } // if parse fails, fall back to original message (no strip)
       }
-/*
-      String payload;
-      #if Encryption
-        payload = xorCipher(cleaned);
+
+      // Binary-safe encryption + newline framing
+      #if ESPNOW_Encryption
+        size_t len = cleaned.length();
+        uint8_t buf[len];
+        memcpy(buf, cleaned.c_str(), len);
+
+        xorBuffer(buf, len);           // apply XOR in-place
+        Serial1.write(buf, len);       // send encrypted bytes
+        Serial1.write('\n');           // newline AFTER encrypted bytes
       #else
-        payload = cleaned;
+        Serial1.print(cleaned);
+        Serial1.print('\n');
       #endif
 
-      Serial1.print(payload);
-*/
+
       Serial.print("ESP-NOW Command sent: ");
       Serial.println(cleaned);
 
@@ -527,6 +456,7 @@ void SendESPNOWCommands() {
     }
   }
 }
+
 
 void printLoRaConfig() {
   Serial.print(F("Frequency Band: "));
@@ -553,8 +483,31 @@ void printLoRaConfig() {
   Serial.print(F("Preamble Length: "));
   Serial.println(LORA_PREAMBLE_LENGTH);
 
+  Serial.print(F("Gateway KEY: "));
+  Serial.println(GATEWAY_KEY);
+
+  Serial.print(F("LoRa Encryption: "));
+  Serial.println(LoRa_Encryption ? F("enabled") : F("disabled"));
+
+  Serial.print(F("ESP-NOW Encryption: "));
+  Serial.println(ESPNOW_Encryption ? F("enabled") : F("disabled"));
+
+  // ---- Print encryption key defined as a macro initializer ----
+  {
+    const uint8_t key[] = encryption_key;
+    const size_t K = sizeof(key) / sizeof(key[0]);
+
+    Serial.print(F("Encryption KEY: "));
+    for (size_t i = 0; i < K; ++i) {
+      Serial.printf("0x%02X", key[i]);
+      if (i + 1 < K) Serial.print(", ");
+    }
+    Serial.println();
+  }
+
   Serial.println(F("=============================="));
 }
+
 
 // ---------- Setup / Loop ----------
 void setup() {
@@ -600,43 +553,85 @@ void setup() {
 }
 
 void loop() {
-  // 1) Handle any ESP-NOW packets coming in over Serial1
-if (Serial1.available() > 0) {
-  String serialrow = Serial1.readStringUntil('\n');  // we know sender prints \r\n
+  // 1) Handle any ESP-NOW packets coming in over Serial1 (binary-safe, length-prefixed)
+  if (Serial1.available() >= 2) {
+    // Read 2-byte little-endian length
+    uint16_t L = 0;
+    if (Serial1.readBytes((char*)&L, 2) != 2) {
+      // couldn't read length cleanly
+    } else if (L > 0 && L <= 512) {
+      static uint8_t buf[512 + 1];   // +1 for NUL terminator when making a String
+      size_t got = 0;
+      unsigned long start = millis();
 
-  Serial.print("ESP-NOW ROW Message Received: ");
-  Serial.println(serialrow);
-/*
-  #if Encryption
-    serialrow = xorCipher(serialrow);
-  #endif
-*/
-  parseIncomingPacket(serialrow);
-  Serial.print("ESP-NOW Message Received: ");
-  Serial.println(serialrow);
-}
+      // Read exactly L bytes with a short timeout
+      while (got < L && (millis() - start) < 100) {
+        got += Serial1.readBytes((char*)buf + got, L - got);
+      }
+      if (got == L) {
+        // Debug: show encrypted raw bytes
+        #if ROW_Debug
+        Serial.print("ESP-NOW Encrypted bytes: ");
+        for (size_t i = 0; i < L; i++) {
+          Serial.printf("%02X ", buf[i]);
+        }
+        Serial.println();
+        #endif
+
+        // Decrypt in-place if enabled
+        #if ESPNOW_Encryption
+          xorBuffer(buf, L);
+        #endif
+
+        // Build String from decrypted bytes (JSON, ASCII, no NULs expected)
+        buf[L] = 0;                      // NUL-terminate for safe String ctor
+        String serialrow = String((char*)buf);
+
+        // Parse & publish
+        parseIncomingPacket(serialrow);
+
+        Serial.print("ESP-NOW Message Received: ");
+        Serial.println(serialrow);
+      } else {
+        // Incomplete frame: optional resync
+        while (Serial1.available()) Serial1.read();
+      }
+    } else {
+      // Invalid length: optional resync
+      while (Serial1.available()) Serial1.read();
+    }
+  }
 
   // 2) Check for a completed LoRa packet
   if (packetReceived) {
     packetReceived = false;
 
-    String recv;
-    int16_t state = radio.readData(recv); // Non-blocking read
+    uint8_t buf[256];
+    size_t len = radio.getPacketLength(true);
+    if (len == 0 || len > sizeof(buf)) len = sizeof(buf);
+
+    int16_t state = radio.readData(buf, len);
+    radio.startReceive(0);
 
     if (state == RADIOLIB_ERR_NONE) {
-      // Indicate reception
       digitalWrite(LED_PIN, LOW);
       LedStartTime = millis();
 
-
-      //Serial.print("LoRa ROW Message: ");
-      //Serial.println(recv);
-      //Serial.println(" ");
-      #if Encryption
-        recv = xorCipher(recv);
+      // DEBUG: Dump LoRa raw encrypted bytes
+      #if ROW_Debug
+      Serial.print("LoRa Encrypted bytes: ");
+      for (size_t i = 0; i < len; i++) {
+        Serial.printf("%02X ", buf[i]);
+      }
+      Serial.println();
       #endif
 
-      // Safer RSSI injection: parse -> set -> publish
+      #if LoRa_Encryption
+        xorBuffer(buf, len);
+      #endif
+
+      String recv((char*)buf, len);
+
       StaticJsonDocument<2048> rx;
       DeserializationError e = deserializeJson(rx, recv);
       if (!e) {
@@ -649,13 +644,11 @@ if (Serial1.available() > 0) {
         Serial.print("RX JSON parse error: ");
         Serial.println(e.f_str());
       }
+
     } else {
       Serial.print("readData() error ");
       Serial.println(state);
     }
-
-    // Restart listening for the next packet immediately
-    radio.startReceive(0);
   }
 
   // 3) Turn off LED after 100 ms

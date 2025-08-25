@@ -1,20 +1,21 @@
 /////////////////////////// LoRa/ESPNow Gateway Key ///////////////////////////
 
 #define GATEWAY_KEY "xy"                           // Separation Key "Keep it small" Must match exactly sensors key
-#define Encryption true                            // Global Payload Encryption, true or false
+#define LoRa_Encryption true                       // Global LoRa Encryption, true or false
+#define ESPNOW_Encryption false                     // Global ESP-NOW Encryption, true or false
 #define encryption_key_length 4                    // must match number of bytes in the XOR key array
 #define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }  // Multi-byte XOR key (2–16 bytes)
 
 /////////////////////////////////// WIFI //////////////////////////////////////
 
-#define WIFI_SSID ""
-#define WIFI_PASSWORD ""
+#define WIFI_SSID "HATEST"
+#define WIFI_PASSWORD "Hatest086852A"
 
 /////////////////////////////////// MQTT //////////////////////////////////////
 
-#define MQTT_USERNAME ""
-#define MQTT_PASSWORD ""
-#define MQTT_SERVER ""
+#define MQTT_USERNAME "test"
+#define MQTT_PASSWORD "test123"
+#define MQTT_SERVER "192.168.99.2"
 #define MQTT_PORT 1883
 #define DISCOVERY_EVERY_PACKET true      // true  = publish discovery every time data is received from that sensor
                                          // false = publish discovery once per CapiBridge boot (remembers if that sensor is already published)
@@ -43,3 +44,5 @@
 #define LORA_PREAMBLE_LENGTH 12         // 6..65535
 
 ///////////////////////////////////////////////////////////////////////////////
+
+#define ROW_Debug false  // true or false , Prints ROW hex values insteed of JSON
