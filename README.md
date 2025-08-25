@@ -424,6 +424,55 @@ void loop() {
 
 👉 full example with all supported keys is available in the `Node_Examples` folder.
 
+
+
+
+## XOR Encryption / Decryption Example
+
+This snippet shows how to use a simple **XOR cipher** with ESP-NOW.  
+Both sender and receiver must use the **same key**.
+
+- `xorInPlace()` encrypts or decrypts data in-place.  
+- Call it **before sending** to encrypt.  
+- Call it **after receiving** to decrypt.  
+
+---
+
+```cpp
+// --- XOR helper (must match on sender + receiver) ---
+#define encryption_key_length 4
+#define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }
+
+static inline void xorInPlace(uint8_t* data, size_t len) {
+  static const uint8_t key[] = encryption_key;
+  const size_t K = encryption_key_length;
+  for (size_t i = 0; i < len; ++i) data[i] ^= key[i % K];
+}
+
+// --- SENDER ---
+void sendExample() {
+  char msg[] = "hello world";
+  size_t len = strlen(msg);
+
+  // Encrypt before sending
+  xorInPlace((uint8_t*)msg, len);
+  esp_now_send(BROADCAST_MAC, (uint8_t*)msg, len);
+}
+
+// --- RECEIVER ---
+void onDataRecv(const uint8_t* mac, const uint8_t* data, int len) {
+  char buf[128];
+  memcpy(buf, data, len);
+
+  // Decrypt after receiving
+  xorInPlace((uint8_t*)buf, len);
+  buf[len] = '\0';  // make string safe
+
+  Serial.print("Decrypted: ");
+  Serial.println(buf);
+}
+```
+
 ---
 
 ## 🔁 2-Way Communication – Sending Commands
