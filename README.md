@@ -517,4 +517,132 @@ If your DIY sensor/assembly is not showing up in Home Assistant, here are some t
 2. Connect CapiBridge to PC with switch position selected ESP1, open Arduino IDE Serial monitor "Speed 115200 baud" and check received JSON strings for errors.
 3. Download MQTT Explorer and connect to your MQTT server. Check the `homeassistant/sensor/Your_Node_Name` topic for any errors.
 
+4. If you have a spare ESP32, you can monitor raw ESP-NOW broadcast traffic along with the sender’s MAC addresses.  
+
+<details>
+<summary>Simple ESP32 code that prints all ESP-NOW broadcast traffic — click to expand</summary>
+
+
+```cpp
+
+#include <Arduino.h>
+#include <esp_now.h>
+#include <WiFi.h>
+#include <esp_wifi.h>
+#include <esp_err.h>
+
+// ---------------- Pins / Serial ----------------
+#define LED_PIN 2
+#define BAUD    115200
+
+// ---------------- ESPNOW ----------------
+#define ESPNOW_WIFI_CHANNEL 1
+static const uint8_t BROADCAST_MAC[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+
+unsigned long LedStartTime = 0;
+
+// -------- Helpers --------
+static bool printStaMac() {
+  uint8_t mac[6] = {0};
+  if (esp_wifi_get_mac(WIFI_IF_STA, mac) != ESP_OK) return false;
+  bool allZero = true; for (int i=0;i<6;i++) if (mac[i]) { allZero=false; break; }
+  Serial.print("My MAC: ");
+  if (allZero) Serial.println("00:00:00:00:00:00");
+  else { for (int i=0;i<6;i++){ if(i) Serial.print(':'); Serial.printf("%02X", mac[i]); } Serial.println(); }
+  return !allZero;
+}
+
+// -------- Callbacks --------
+#if defined(ESP_IDF_VERSION_MAJOR) && (ESP_IDF_VERSION_MAJOR >= 5)
+// IDF v5 / Arduino-ESP32 3.x
+void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
+  char buf[256];
+  if (len >= (int)sizeof(buf)) len = sizeof(buf) - 1;
+  memcpy(buf, data, len);
+  buf[len] = '\0';
+
+  if (info && info->src_addr) {
+    for (int i=0; i<6; i++) {
+      if (i) Serial.print(':');
+      Serial.printf("%02X", info->src_addr[i]);
+    }
+    Serial.print(" -> ");
+  }
+
+  Serial.println(buf);
+
+  digitalWrite(LED_PIN, LOW);   // blink
+  LedStartTime = millis();
+}
+#else
+// IDF v4 / Arduino-ESP32 2.x
+void OnDataRecv(const uint8_t *mac, const uint8_t *data, int len) {
+  char buf[256];
+  if (len >= (int)sizeof(buf)) len = sizeof(buf) - 1;
+  memcpy(buf, data, len);
+  buf[len] = '\0';
+
+  if (mac) {
+    for (int i=0; i<6; i++) {
+      if (i) Serial.print(':');
+      Serial.printf("%02X", mac[i]);
+    }
+    Serial.print(" -> ");
+  }
+
+  Serial.println(buf);
+
+  digitalWrite(LED_PIN, LOW);   // blink
+  LedStartTime = millis();
+}
+#endif
+
+void setup() {
+  Serial.begin(BAUD);
+  delay(1000);
+  while (!Serial && millis() < 5000) { delay(10); }
+
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH); // LED off
+
+  WiFi.persistent(false);
+  WiFi.mode(WIFI_STA);
+  esp_wifi_set_ps(WIFI_PS_NONE);
+  esp_wifi_start();
+  delay(50);
+
+  if (!printStaMac()) {
+    esp_wifi_stop(); delay(50); esp_wifi_start(); delay(100);
+    printStaMac();
+  }
+
+  esp_wifi_set_promiscuous(true);
+  esp_wifi_set_channel(ESPNOW_WIFI_CHANNEL, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_promiscuous(false);
+
+  Serial.print("ESPNOW Channel: "); Serial.println(ESPNOW_WIFI_CHANNEL);
+
+  if (esp_now_init() != ESP_OK) {
+    for(;;) delay(1000);
+  }
+
+  esp_now_peer_info_t bcast{};
+  memcpy(bcast.peer_addr, BROADCAST_MAC, 6);
+  bcast.ifidx   = WIFI_IF_STA;
+  bcast.channel = ESPNOW_WIFI_CHANNEL;
+  bcast.encrypt = false;
+  esp_err_t e = esp_now_add_peer(&bcast);
+  (void)e; // ignore errors
+
+  esp_now_register_recv_cb(OnDataRecv);
+}
+
+void loop() {
+  if (millis() - LedStartTime >= 100) digitalWrite(LED_PIN, HIGH);
+}
+
+```
+</details>
+
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/espnowtraffic.jpg"/>
 
