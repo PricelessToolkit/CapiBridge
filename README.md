@@ -427,6 +427,7 @@ void loop() {
 
 ## LoRa Sensor Example (with optional XOR encryption)
 You can find working code examples in the following repositories:  
+- [MailBoxGuard for "CapiBridge"](https://github.com/PricelessToolkit/MailBoxGuard/blob/main/Code/CapiBridge/Mailbox_Guard_Sensor_CapiBridge/Mailbox_Guard_Sensor_CapiBridge.ino)
 - [PirBOX-LITE](https://github.com/PricelessToolkit/PirBOX-LITE)  
 - [PirBOX-MAX](https://github.com/PricelessToolkit/PirBOX-MAX)  
 
