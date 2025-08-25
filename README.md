@@ -330,7 +330,7 @@ You can **enable/disable XOR encryption** with a single switch.
 #define SEND_PERIOD_MS       5000
 
 // XOR encryption toggle and key
-#define ENCRYPTION 1   // 0 = off, 1 = on
+#define ENCRYPTION 0   // 0 = off, 1 = on
 #define encryption_key_length 4
 #define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }
 // -----------------------------------
