@@ -1,6 +1,6 @@
 <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/banner.jpg"/>
 
-🤗 Please consider subscribing to my [YouTube channel](https://www.youtube.com/@PricelessToolkit/videos). Your subscription goes a long way in backing my work. if you feel more generous, you can buy me a coffee
+🤗 Please consider subscribing to my [YouTube channel](https://www.youtube.com/@PricelessToolkit/videos). Your subscription goes a long way in backing my work. If you feel more generous, you can buy me a coffee
 
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U6U2QLAF8)
@@ -139,13 +139,11 @@ ____________
 > 
 
 ```cpp
-#define GATEWAY_KEY "xy"                           // Separation key 2 letters
-#define Encryption true                            // Global Payload Encryption, true or false
+#define GATEWAY_KEY "xy"                           // Separation Key "Keep it small" Must match exactly sensors key
+#define LoRa_Encryption true                       // Global LoRa Encryption, true or false
+#define ESPNOW_Encryption false                    // Global ESP-NOW Encryption, true or false
 #define encryption_key_length 4                    // must match number of bytes in the XOR key array
-#define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }  // Multi-byte XOR key (between 2–16 values).
-                                                   // Use random-looking HEX values (from 0x00 to 0xFF).
-                                                   // Must match exactly on both sender and receiver.
-                                                   // Example: { 0x1F, 0x7E, 0xC2, 0x5A }  ➜ 4-byte key.
+#define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }  // Multi-byte XOR key (2–16 bytes)
 
 ```
 #### 🔐 How to Create Your `encryption_key` Using a Calculator
@@ -227,11 +225,14 @@ ____________
 > [!IMPORTANT]
 > For optimizing the `SPREADING_FACTOR` (SF) in your network, it's crucial not to default to SF11, aiming for maximum distance without considering its downsides. SF11, while extending range, significantly slows down data transmission. For example, if your furthest sensor is only 100 meters away, opting for SF7 is more efficient. SF7 is faster, consuming less power compared to SF11. Therefore, it's essential to choose the SF wisely based on your specific needs and understand the trade-offs. Avoid setting SF11 by default without assessing the impact on speed, power consumption, and time on air (ToA) for others.
 
+```cpp
+#define ROW_Debug false  // true or false, Prints ROW hex values instead of JSON
+```
 ____________
 
 ## ESP2.ino sketch configuration
 > [!NOTE]
-> ESP2 for `ESPNOW` requires no initial setup, once the sketch is uploaded, it automatically prints the MAC address in the serial monitor for integration with ESPNOW nodes/sensors.
+> ESP2 for `ESPNOW` requires no initial setup. Once the sketch is uploaded, it automatically prints the MAC address in the serial monitor for integration with ESPNOW nodes/sensors.
 ____________
 
 ## Uploading Code to CapiBridge
@@ -300,121 +301,130 @@ Full Suported MQTT-Autodiscovery List
 | `vb`  | Vibration                 | Binary on/off       | No       |
 
 
-## Sensor / Node Example
-The simplest way to create a JSON String without the ArduinoJson.h library and transmit it via LoRa with encryption. `Example from MailBox sensor`
+
+## ESP-NOW Sensor Broadcast (with optional XOR encryption)
+
+This example broadcasts JSON sensor data from an ESP32 via **ESP-NOW**.  
+You can **enable/disable XOR encryption** with a single switch.
+
+- Broadcasts to `FF:FF:FF:FF:FF:FF`
+- JSON includes `k` (gateway key) and `id` (device id), plus sample sensor fields
+- **ENCRYPTION** toggle controls raw XOR in-place (gateway must use the same key)
+- Keep payload under ~249 bytes
+
+
+<details>
+<summary>Minimal Example (with encryption toggle). Click here</summary>
 
 ```cpp
-#define NODE_NAME "mbox"
-#define GATEWAY_KEY "xy" // must match CapiBridge's key
-#define Encryption true                            // Global Payload obfuscation (Encryption)
-#define encryption_key_length 4                    // must match number of bytes in the XOR key array
-#define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }  // Multi-byte XOR key (between 2–16 values).
-                                                   // Use random-looking HEX values (from 0x00 to 0xFF).
-                                                   // Must match exactly on both sender and receiver.
-                                                   // Example: { 0x1F, 0x7E, 0xC2, 0x5A }  ➜ 4-byte key.
+#include <Arduino.h>
+#include <esp_now.h>
+#include <WiFi.h>
+#include <esp_wifi.h>
+#include <ArduinoJson.h>
 
+// ---------- USER SETTINGS ----------
+#define DEVICE_ID            "TestESP"
+#define GATEWAY_KEY          "xy"
+#define ESPNOW_WIFI_CHANNEL  1
+#define SEND_PERIOD_MS       5000
 
-// ------------------- XOR + BASE 64 ------------------//
+// XOR encryption toggle and key
+#define ENCRYPTION 1   // 0 = off, 1 = on
+#define encryption_key_length 4
+#define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }
+// -----------------------------------
 
-// config.h has:
-// #define encryption_key_length 4
-// #define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }
+// Broadcast MAC
+static const uint8_t BROADCAST_MAC[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+unsigned long lastSend = 0;
 
-String xorCipher(String in) {
-
-  // 1) Use an ARRAY, not a pointer, for the macro initializer
+// XOR in place (raw bytes)
+static inline void xorInPlace(uint8_t* data, size_t len) {
   static const uint8_t key[] = encryption_key;
-  const int K = encryption_key_length;
+  const size_t K = encryption_key_length;
+  for (size_t i = 0; i < len; ++i) data[i] ^= key[i % K];
+}
 
-  auto isB64 = [](const String& s)->bool{
-    if (s.length() % 4) return false;
-    for (size_t i=0;i<s.length();++i){
-      char c=s[i];
-      if (!((c>='A'&&c<='Z')||(c>='a'&&c<='z')||(c>='0'&&c<='9')||c=='+'||c=='/'||c=='=')) return false;
-    }
-    return true;
-  };
+// Build small JSON payload (add your real sensor values)
+static size_t buildSensorJson(char* out, size_t cap) {
+  JsonDocument doc;          // ArduinoJson v7 style
+  doc["k"]  = GATEWAY_KEY;   // REQUIRED: gateway private key
+  doc["id"] = DEVICE_ID;     // REQUIRED: node/device id
+  doc["t"]  = 21.5;          // temperature °C (example)
+  doc["hu"] = 46;            // humidity %  (example)
+  return serializeJson(doc, out, cap);
+}
 
-  auto b64enc = [](const uint8_t* b, size_t n)->String{
-    static const char T[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    String o; o.reserve(((n+2)/3)*4);
-    for(size_t i=0;i<n;i+=3){
-      uint32_t v = ((uint32_t)b[i] << 16)
-                 | ((i+1<n ? (uint32_t)b[i+1] : 0) << 8)
-                 |  (i+2<n ? (uint32_t)b[i+2] : 0);
-      o += T[(v>>18)&63]; o += T[(v>>12)&63];
-      o += (i+1<n) ? T[(v>>6)&63] : '=';
-      o += (i+2<n) ? T[v&63]      : '=';
-    }
-    return o;
-  };
+static bool sendBroadcast() {
+  char buf[160];
+  size_t len = buildSensorJson(buf, sizeof(buf));
+  if (len == 0 || len >= sizeof(buf)) return false;
 
-  auto b64val = [](char c)->int{
-    if(c>='A'&&c<='Z') return c-'A';
-    if(c>='a'&&c<='z') return 26+c-'a';
-    if(c>='0'&&c<='9') return 52+c-'0';
-    if(c=='+') return 62;
-    if(c=='/') return 63;
-    return -1;
-  };
+  // Optional debug: plaintext
+  // Serial.write((const uint8_t*)buf, len); Serial.println();
 
-  auto b64dec = [&](const String& s)->String{
-    String o; o.reserve((s.length()/4)*3);
-    for(size_t i=0;i<s.length(); i+=4){
-      int a=b64val(s[i]), b=b64val(s[i+1]);
-      int c = (s[i+2]=='=') ? -1 : b64val(s[i+2]);
-      int d = (s[i+3]=='=') ? -1 : b64val(s[i+3]);
+  // Toggle XOR encryption
+  #if ENCRYPTION
+    xorInPlace(reinterpret_cast<uint8_t*>(buf), len);
+  #endif
 
-      // 2) Upcast before shifting (AVR int is 16-bit)
-      uint32_t v = ((uint32_t)(a & 63) << 18)
-                 | ((uint32_t)(b & 63) << 12)
-                 | ((uint32_t)((c < 0 ? 0 : (c & 63))) << 6)
-                 |  (uint32_t)((d < 0 ? 0 : (d & 63)));
+  return esp_now_send(BROADCAST_MAC, reinterpret_cast<const uint8_t*>(buf), len) == ESP_OK;
+}
 
-      o += (char)((v >> 16) & 0xFF);
-      if (c >= 0) o += (char)((v >> 8) & 0xFF);
-      if (d >= 0) o += (char)(v & 0xFF);
-    }
-    return o;
-  };
+// Send callback (handles both IDF v4 and v5 cores)
+#if defined(ESP_IDF_VERSION_MAJOR) && (ESP_IDF_VERSION_MAJOR >= 5)
+void onDataSent(const wifi_tx_info_t*, esp_now_send_status_t status) {
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "SUCCESS" : "FAIL");
+}
+#else
+void onDataSent(const uint8_t*, esp_now_send_status_t status) {
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "SUCCESS" : "FAIL");
+}
+#endif
 
-  if (isB64(in)) {                 // decrypt: Base64 -> XOR -> JSON
-    String bytes = b64dec(in);
-    String out; out.reserve(bytes.length());
-    for (size_t i=0;i<bytes.length();++i)
-      out += (char)(((uint8_t)bytes[i]) ^ key[i % K]);
-    return out;
-  } else {                         // encrypt: JSON -> XOR -> Base64
-    String x; x.reserve(in.length());
-    for (size_t i=0;i<in.length();++i)
-      x += (char)(((uint8_t)in[i]) ^ key[i % K]);
-    return b64enc((const uint8_t*)x.c_str(), x.length());
+void setup() {
+  Serial.begin(115200);
+  WiFi.persistent(false);
+  WiFi.mode(WIFI_STA);
+  esp_wifi_set_ps(WIFI_PS_NONE);
+  esp_wifi_start();
+
+  // Lock to gateway's Wi-Fi channel
+  esp_wifi_set_promiscuous(true);
+  esp_wifi_set_channel(ESPNOW_WIFI_CHANNEL, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_promiscuous(false);
+
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESP-NOW init failed");
+    while (true) delay(1000);
+  }
+  esp_now_register_send_cb(onDataSent);
+
+  // Add broadcast peer (unencrypted at ESP-NOW level; XOR is app-layer)
+  esp_now_peer_info_t peer{};
+  memcpy(peer.peer_addr, BROADCAST_MAC, 6);
+  peer.ifidx   = WIFI_IF_STA;
+  peer.channel = ESPNOW_WIFI_CHANNEL;
+  peer.encrypt = false;
+  esp_now_add_peer(&peer);
+}
+
+void loop() {
+  if (millis() - lastSend >= SEND_PERIOD_MS) {
+    lastSend = millis();
+    bool ok = sendBroadcast();
+    Serial.println(ok ? "Sent" : "Send failed");
   }
 }
 
 
-
-//---------------------- XOR END ----------------------//
-
-
-
-void setup() //.......
-
-void loop() {
-
-int battery = 10;
-String payload = "{\"k\":\"" + String(GATEWAY_KEY) + "\",\"id\":\"" + String(NODE_NAME) + "\",\"s\":\"mail\",\"b\":" + String(battery) + "}";
-
-#if defined(Encryption)
-  payload = xorCipher(payload);
-#endif
-
-LoRa.beginPacket();
-LoRa.print(payload);
-LoRa.endPacket();
-delay(2000);
-}
 ```
+</details>
+
+👉 full example with all supported keys is available in the `Node_Examples` folder.
+
+---
 
 ## 🔁 2-Way Communication – Sending Commands
 
@@ -429,7 +439,7 @@ Payload
 ```json
 {"k":"xy","id":"PirBoxM","rm":"lora","com":"xxxxxx"}
 ```
-Also, possible sending ESP-NOW payload "work in progress"
+Also, possible sending ESP-NOW payload
 ```json
 {"k":"xy","id":"PirBoxM","rm":"espnow","com":"xxxxxx"}
 ```
