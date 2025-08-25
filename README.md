@@ -302,7 +302,7 @@ Full Suported MQTT-Autodiscovery List
 
 
 
-## ESP-NOW Sensor Broadcast (with optional XOR encryption)
+## ESP-NOW Sensor Example (with optional XOR encryption)
 
 This example broadcasts JSON sensor data from an ESP32 via **ESP-NOW**.  
 You can **enable/disable XOR encryption** with a single switch.
@@ -425,7 +425,12 @@ void loop() {
 👉 full example with all supported keys is available in the `Node_Examples` folder.
 
 
+## LoRa Sensor Example (with optional XOR encryption)
+You can find working code examples in the following repositories:  
+- [PirBOX-LITE](https://github.com/PricelessToolkit/PirBOX-LITE)  
+- [PirBOX-MAX](https://github.com/PricelessToolkit/PirBOX-MAX)  
 
+---
 
 ## XOR Encryption / Decryption Example
 
