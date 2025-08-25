@@ -451,7 +451,7 @@ Descriptions
 | `k`   | Private gateway key (auth)      | `"xy"`      |
 | `id`  | Target node name (device ID)    | `"PirBoxM"` |
 | `rm`  | Radio mode (`lora` / `espnow`)  | `"lora", "espnow"`    |
-| `com` | Command code (text)             | `"xxxxxx"`  |
+| `com` | Command code (text/number)      | `"xxxxxx"`  |
 
 
 
