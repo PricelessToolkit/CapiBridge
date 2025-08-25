@@ -45,8 +45,11 @@ ____________
 
 
 ## 📣 Updates, Bugfixes, and Breaking Changes
+- 25.08.2025 - Breaking Change (XOR obfuscation "Encryption" for ESP-NOW).
+  - Possibility to Enable/Disable Encryption separately for LoRa and ESP-NOW
+  - [2-way communication,](https://github.com/PricelessToolkit/CapiBridge/tree/main?tab=readme-ov-file#-2-way-communication--sending-commands) For LoRa and ESP-NOW
 - 18.08.2025 - Hardware modification, The new LoRa module RA-01SH "SX1262"
-- - Added option to select LoRA module type via config.
+  - Added option to select LoRA module type via config.
 ```c
      //#define LORA_MODULE LORA_MODULE_SX1276  // SX1276 Module (orders shipped before Aug 2025)
    #define LORA_MODULE LORA_MODULE_SX1262  // SX1262 Module CapiBridge v2 (orders shipped after Aug 2025)
