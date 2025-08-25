@@ -477,18 +477,18 @@ void onDataRecv(const uint8_t* mac, const uint8_t* data, int len) {
 
 ## 🔁 2-Way Communication – Sending Commands
 
-To send a command via **LoRa**, publish a JSON payload to the following MQTT topic:
+To send a command via **LoRa** or **ESP-NOW**, publish a JSON payload to the following MQTT topic:
 
 ```
 homeassistant/sensor/CapiBridge/command
 ```
 
-Payload
+LoRa Payload
 
 ```json
 {"k":"xy","id":"PirBoxM","rm":"lora","com":"xxxxxx"}
 ```
-Also, possible sending ESP-NOW payload
+ESP-NOW payload
 ```json
 {"k":"xy","id":"PirBoxM","rm":"espnow","com":"xxxxxx"}
 ```
