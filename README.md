@@ -508,8 +508,43 @@ Descriptions
 | `rm`  | Radio mode (`lora` / `espnow`)  | `"lora", "espnow"`    |
 | `com` | Command code (text/number)      | `"xxxxxx"`  |
 
+To send commands through the Home Assistant Dashboard, use the button example below.
 
+```yaml
 
+type: horizontal-stack
+cards:
+  - show_name: true
+    show_icon: true
+    type: button
+    name: Relay 1
+    icon: mdi:numeric-1-box
+    tap_action:
+      action: call-service
+      service: mqtt.publish
+      service_data:
+        topic: homeassistant/sensor/CapiBridge/command
+        payload: "{\"k\":\"xy\",\"id\":\"PirBoxM\",\"rm\":\"lora\",\"com\":\"10\"}"
+  - type: button
+    name: Relay 2
+    icon: mdi:numeric-2-box
+    tap_action:
+      action: call-service
+      service: mqtt.publish
+      service_data:
+        topic: homeassistant/sensor/CapiBridge/command
+        payload: "{\"k\":\"xy\",\"id\":\"PirBoxM\",\"rm\":\"lora\",\"com\":\"01\"}"
+  - type: button
+    name: Relay 1 and 2
+    icon: mdi:numeric-3-box
+    tap_action:
+      action: call-service
+      service: mqtt.publish
+      service_data:
+        topic: homeassistant/sensor/CapiBridge/command
+        payload: "{\"k\":\"xy\",\"id\":\"PirBoxM\",\"rm\":\"lora\",\"com\":\"11\"}"
+
+```
 
 ## Troubleshooting
 If your DIY sensor/assembly is not showing up in Home Assistant, here are some tips that may help you find the problem.
