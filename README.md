@@ -543,8 +543,11 @@ cards:
       service_data:
         topic: homeassistant/sensor/CapiBridge/command
         payload: "{\"k\":\"xy\",\"id\":\"PirBoxM\",\"rm\":\"lora\",\"com\":\"11\"}"
-
 ```
+
+> [!NOTE]
+> Please note that when sending a JSON payload from the HA dashboard, the payload needs to be slightly changed; you need to put the payload into "" and add \ before every ". For example `"{\"k\":\"xy\",\"id\":\"PirBoxM\",\"rm\":\"lora\",\"com\":\"11\"}"`
+
 
 ## Troubleshooting
 If your DIY sensor/assembly is not showing up in Home Assistant, here are some tips that may help you find the problem.
