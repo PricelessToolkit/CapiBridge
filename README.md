@@ -72,7 +72,8 @@ This project is open-source, allowing you to assemble CapiBridge on your own. To
 ## Schematic
 <details>
   <summary>View schematic. Click here</summary>
-<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/capibridge_schematic.jpg"/>
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/V1_SX1276/capibridge_schematic.jpg"/>
+ <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/V2_SX1262/capibridge_schematic_v2_SH.jpg"/>
 </details>
 
 ____________
