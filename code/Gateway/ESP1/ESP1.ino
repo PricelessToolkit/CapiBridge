@@ -529,9 +529,17 @@ void setup() {
   #if (LORA_MODULE == LORA_MODULE_SX1276)
     Serial.println("LoRa Ra-01H SX1276 initialization...");
     printLoRaConfig();
-
-  #else
+  
+  #elif (LORA_MODULE == LORA_MODULE_SX1262)
     Serial.println("LoRa Ra-01SH SX1262 initialization...");
+    printLoRaConfig();
+  
+  #elif (LORA_MODULE == LORA_MODULE_SX1268)
+    Serial.println("LoRa RA-01S SX1268 initialization...");
+    printLoRaConfig();
+  
+  #else
+    Serial.println("LoRa unknown module initialization...");
     printLoRaConfig();
   #endif
 
