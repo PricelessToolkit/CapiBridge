@@ -8,14 +8,14 @@
 
 /////////////////////////////////// WIFI //////////////////////////////////////
 
-#define WIFI_SSID "HATEST"
-#define WIFI_PASSWORD "Hatest086852A"
+#define WIFI_SSID "CHANGE_ME"
+#define WIFI_PASSWORD "CHANGE_ME"
 
 /////////////////////////////////// MQTT //////////////////////////////////////
 
-#define MQTT_USERNAME "test"
-#define MQTT_PASSWORD "test123"
-#define MQTT_SERVER "192.168.99.2"
+#define MQTT_USERNAME "CHANGE_ME"
+#define MQTT_PASSWORD "CHANGE_ME"
+#define MQTT_SERVER "192.168.xx.x"
 #define MQTT_PORT 1883
 #define DISCOVERY_EVERY_PACKET true      // true  = publish discovery every time data is received from that sensor
                                          // false = publish discovery once per CapiBridge boot (remembers if that sensor is already published)
