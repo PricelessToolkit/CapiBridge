@@ -26,9 +26,9 @@
 
 // Select which LoRa module this CapiBridge is uses:
 
-//#define LORA_MODULE LORA_MODULE_SX1276  // Ra-01H "SX1276" Module (orders shipped before Aug 2025)
-//#define LORA_MODULE LORA_MODULE_SX1262  // Ra-01SH "SX1262"  Module CapiBridge v2 (orders shipped after Aug 2025)
-#define LORA_MODULE LORA_MODULE_SX1268    // Ra-01S Module " 433Mhz Version"
+//#define LORA_MODULE LORA_MODULE_SX1276  // Ra-01H 868/915Mhz "SX1276" Module (orders shipped before Aug 2025)
+//#define LORA_MODULE LORA_MODULE_SX1262  // Ra-01SH 868/915Mhz "SX1262"  Module CapiBridge v2
+#define LORA_MODULE LORA_MODULE_SX1268    // Ra-01S 433Mhz Module "433Mhz Version" Module CapiBridge v2
 
 #define BAND 868.0                       // 433.0 / 868.0 / 915.0
 #define LORA_TX_POWER 20                 // dBm; check regulatory limits in your region (SX1262 supports up to 22) (SX1276 supports up to 20)
