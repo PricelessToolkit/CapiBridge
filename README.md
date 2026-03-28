@@ -45,6 +45,9 @@ ____________
 
 
 ## 📣 Updates, Bugfixes, and Breaking Changes
+- 28.03.2025
+  - Added support for "Ra-01S" 433Mhz Module
+  - `#define LORA_MODULE LORA_MODULE_SX1268    // Ra-01S 433Mhz Module "433Mhz Version" Module CapiBridge v2`
 - 25.08.2025 - Breaking Change (XOR obfuscation "Encryption" for ESP-NOW).
   - Possibility to Enable/Disable Encryption separately for LoRa and ESP-NOW
   - [2-way communication,](https://github.com/PricelessToolkit/CapiBridge/tree/main?tab=readme-ov-file#-2-way-communication--sending-commands) For LoRa and ESP-NOW
