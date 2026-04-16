@@ -4,40 +4,6 @@
 - [PirBOX-MAX](https://github.com/PricelessToolkit/PirBOX-MAX) - LoRa long-range 2-way motion sensor with reed switch inputs and relays
 - [SOILSENS-V5W](https://github.com/PricelessToolkit/SOILSENS-V5W) - Soil moisture sensor
 
-## Biggest advantage
-
-The biggest advantage of CapiBridge is support for DIY sensors with one unified payload format.
-The gateway receives JSON strings from LoRa and ESP-NOW DIY devices and publishes them to MQTT.
-It automatically separates the JSON string into dynamic MQTT topics based on keys inside the JSON payload, which makes it highly compatible with Home Assistant and makes adding new DIY nodes much easier.
-
-## Payload format and supported keys
-
-CapiBridge expects JSON payloads and maps short keys into MQTT topics automatically.
-Examples of supported keys:
-
-| Key | Meaning |
-|-----|---------|
-| `k` | Gateway key |
-| `id` | Node / device ID |
-| `r` | RSSI |
-| `b` | Battery percent |
-| `v` | Voltage |
-| `pw` | Current / power value |
-| `l` | Light / lux |
-| `w` | Weight |
-| `t` | Temperature |
-| `t2` | Secondary temperature |
-| `hu` | Humidity |
-| `mo` | Moisture |
-| `rw` | RAW row value |
-| `s` | Generic state |
-| `atm` | Atmospheric pressure |
-| `cd` | CO2 |
-| `bt` | Button |
-| `m` | Motion |
-| `dr` | Door |
-| `wd` | Window |
-| `vb` | Vibration |
 
 ## 🔁 2-Way Communication – Sending Commands
 
