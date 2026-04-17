@@ -1,55 +1,165 @@
-// For Older Board with RA-01H (SX1276)
-
 #include <Arduino.h>
-#include "config.h"
+#include "settings.h"
 #include "radio.h"
+#include "web_ui.h"
 #include <SPI.h>
-#include <RadioLib.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <WebServer.h>
 #include <ArduinoJson.h>
 #include <vector>
+#include <math.h>
+#include <stdarg.h>
 
+// Mirror the hardware serial output into an in-memory log so the web UI can show a live Raw View terminal.
+class MirroredSerial : public Print {
+ public:
+  explicit MirroredSerial(HardwareSerial& serial) : serial_(serial) {}
 
-RADIO_CLASS radio = new Module(MODULE_ARGS);
+  void begin(unsigned long baud) { serial_.begin(baud); }
 
+  size_t write(uint8_t ch) override {
+    serial_.write(ch);
+    mirrorChar(static_cast<char>(ch));
+    return 1;
+  }
+
+  size_t write(const uint8_t* buffer, size_t size) override {
+    serial_.write(buffer, size);
+    for (size_t i = 0; i < size; ++i) {
+      mirrorChar(static_cast<char>(buffer[i]));
+    }
+    return size;
+  }
+
+  size_t printf(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    va_list copy;
+    va_copy(copy, args);
+    int needed = vsnprintf(nullptr, 0, format, copy);
+    va_end(copy);
+    if (needed <= 0) {
+      va_end(args);
+      return 0;
+    }
+    String buffer;
+    buffer.reserve(static_cast<size_t>(needed) + 1);
+    char temp[needed + 1];
+    vsnprintf(temp, sizeof(temp), format, args);
+    va_end(args);
+    write(reinterpret_cast<const uint8_t*>(temp), static_cast<size_t>(needed));
+    return static_cast<size_t>(needed);
+  }
+
+  using Print::write;
+
+ private:
+  HardwareSerial& serial_;
+
+  void mirrorChar(char ch);
+};
+
+// LoRa RX interrupts only flip this flag; the main loop does the heavier packet handling work.
 volatile bool packetReceived = false;
 void onReceive() { packetReceived = true; }
 
 #define LED_PIN 2
 #define BAUD 115200
-#define RXPIN 18 // Connected to ESP2 "ESPNOW RECEIVER"
-#define TXPIN 19 // Connected to ESP2 "ESPNOW RECEIVER"
+#define RXPIN 18
+#define TXPIN 19
 
-// ===== MQTT / Topics =====
 #define MQTT_RETAIN true
 #define BINARY_SENSOR_TOPIC "homeassistant/binary_sensor/"
 #define SENSOR_TOPIC "homeassistant/sensor/"
-
-// Global LWT for availability of the bridge (and used by entities)
 #define CAPIBRIDGE_LWT_TOPIC "capibridge/availability"
 #define CAPIBRIDGE_RSSI_TOPIC "homeassistant/sensor/CapiBridge/rssi"
-#define CAPIBRIDGE_COMMAND_TOPIC "homeassistant/sensor/CapiBridge/command" // kept as-is
-
-// Availability payloads
+#define CAPIBRIDGE_COMMAND_TOPIC "homeassistant/sensor/CapiBridge/command"
 #define AVAIL_ON  "online"
 #define AVAIL_OFF "offline"
 
-String mqttMessage = "";
-String mqttMessagexor = "";
-bool newCommandReceived = false;
+const char* FIRMWARE_VERSION = "V1.3";
 
+// Global gateway state shared across setup, loop, radio handling, MQTT, and the web API.
+RuntimeRadio radio;
+GatewaySettings settings;
+SettingsStore settingsStore;
+WebServer server(80);
+WiFiClient espClient;
+PubSubClient client(espClient);
+std::vector<String> publishedDiscovery;
+
+static constexpr size_t MAX_SERIAL_LOG = 120;
+std::vector<String> serialLog;
+String serialLineBuffer;
+
+// Keep only the newest serial lines so the browser-side Raw View stays bounded in RAM.
+void pushSerialLogLine(const String& line) {
+  if (serialLog.size() >= MAX_SERIAL_LOG) {
+    serialLog.erase(serialLog.begin());
+  }
+  String clipped = line.length() <= 480 ? line : line.substring(0, 480) + "\n... truncated ...";
+  serialLog.push_back(clipped);
+}
+
+// Build log lines one character at a time and flush them whenever Serial prints a newline.
+void MirroredSerial::mirrorChar(char ch) {
+  if (ch == '\r') {
+    return;
+  }
+  if (ch == '\n') {
+    pushSerialLogLine(serialLineBuffer);
+    serialLineBuffer = "";
+    return;
+  }
+  serialLineBuffer += ch;
+  if (serialLineBuffer.length() > 480) {
+    serialLineBuffer.remove(0, serialLineBuffer.length() - 480);
+  }
+}
+
+static MirroredSerial SerialMirror(::Serial);
+#define Serial SerialMirror
+
+String mqttMessage = "";
+bool newCommandReceived = false;
+bool accessPointActive = false;
+String accessPointSsid = "";
 unsigned long LedStartTime = 0;
 unsigned long diagTimer = 60000;
 unsigned long lastDiagTimer = 0;
+unsigned long lastWifiTry = 0;
+unsigned long lastMqttAttempt = 0;
+unsigned long rebootAt = 0;
 
-// Track discovery we’ve already published: key = "<id>|<suffix>"
-std::vector<String> publishedDiscovery;
+static constexpr size_t MAX_TRAFFIC_LOG = 30;
+static constexpr size_t MAX_WORKING_NODES = 48;
+static constexpr size_t MAX_TRAFFIC_TEXT = 480;
 
-WiFiClient espClient;
-PubSubClient client(espClient);
+struct TrafficEntry {
+  unsigned long atMs;
+  String source;
+  String status;
+  String nodeId;
+  int rssi;
+  String raw;
+  String pretty;
+};
 
-// ---------- Helpers to avoid discovery spam ----------
+struct WorkingNodeEntry {
+  unsigned long atMs;
+  String source;
+  String status;
+  String nodeId;
+  int rssi;
+  bool hasBattery;
+  String battery;
+};
+
+std::vector<TrafficEntry> trafficLog;
+std::vector<WorkingNodeEntry> workingNodes;
+
+// Discovery tracking avoids re-sending the same Home Assistant config unless the user asked for it.
 static bool discoveryPublishedFor(const String &id, const String &suffix) {
   String key = id + "|" + suffix;
   for (const auto &v : publishedDiscovery) {
@@ -57,40 +167,211 @@ static bool discoveryPublishedFor(const String &id, const String &suffix) {
   }
   return false;
 }
+
 static void markDiscoveryPublished(const String &id, const String &suffix) {
   publishedDiscovery.push_back(id + "|" + suffix);
 }
 
-// ---------- WiFi ----------
+// Small formatting helpers used by the status API and boot diagnostics.
+String ipToString(const IPAddress& ip) {
+  return ip.toString();
+}
+
+String formatUptime(unsigned long ms) {
+  unsigned long totalSeconds = ms / 1000;
+  unsigned long days = totalSeconds / 86400;
+  totalSeconds %= 86400;
+  unsigned long hours = totalSeconds / 3600;
+  totalSeconds %= 3600;
+  unsigned long minutes = totalSeconds / 60;
+  unsigned long seconds = totalSeconds % 60;
+
+  char buffer[40];
+  snprintf(buffer, sizeof(buffer), "%lud %02lu:%02lu:%02lu", days, hours, minutes, seconds);
+  return String(buffer);
+}
+
+bool hasConfiguredWifi() {
+  return strlen(settings.wifiSsid) > 0 && strcmp(settings.wifiSsid, "CHANGE_ME") != 0;
+}
+
+bool hasConfiguredMqtt() {
+  return strlen(settings.mqttServer) > 0 && strcmp(settings.mqttServer, "CHANGE_ME") != 0;
+}
+
+bool webUiPasswordEnabled() {
+  return strlen(WEBUI_PASSWORD) > 0;
+}
+
+bool ensureWebUiAuth() {
+  if (!webUiPasswordEnabled()) {
+    return true;
+  }
+
+  if (server.authenticate(WEBUI_USERNAME, WEBUI_PASSWORD)) {
+    return true;
+  }
+
+  server.requestAuthentication(BASIC_AUTH, "CapiBridge", "Enter Web UI password");
+  return false;
+}
+
+String settingsSourceLabel() {
+  return settingsStore.wasLoadedFromFlash() ? "Saved settings" : "Upload defaults";
+}
+
+String formatTrafficTime(unsigned long atMs) {
+  unsigned long totalSeconds = atMs / 1000;
+  unsigned long hours = (totalSeconds / 3600) % 24;
+  unsigned long minutes = (totalSeconds / 60) % 60;
+  unsigned long seconds = totalSeconds % 60;
+  char buffer[16];
+  snprintf(buffer, sizeof(buffer), "%02lu:%02lu:%02lu", hours, minutes, seconds);
+  return String(buffer);
+}
+
+String clipTrafficText(const String& text) {
+  if (text.length() <= MAX_TRAFFIC_TEXT) {
+    return text;
+  }
+  return text.substring(0, MAX_TRAFFIC_TEXT) + "\n... truncated ...";
+}
+
+String formatJsonPretty(const String& raw) {
+  StaticJsonDocument<2048> doc;
+  if (deserializeJson(doc, raw)) {
+    return raw;
+  }
+
+  String pretty;
+  serializeJsonPretty(doc, pretty);
+  return pretty;
+}
+
+void updateWorkingNode(const String& source, const String& raw, const String& status, int rssi, const String& nodeId) {
+  if (nodeId.isEmpty()) {
+    return;
+  }
+
+  for (auto it = workingNodes.begin(); it != workingNodes.end(); ++it) {
+    if (it->nodeId == nodeId) {
+      workingNodes.erase(it);
+      break;
+    }
+  }
+
+  WorkingNodeEntry entry;
+  entry.atMs = millis();
+  entry.source = source;
+  entry.status = status;
+  entry.nodeId = nodeId;
+  entry.rssi = rssi;
+  entry.hasBattery = false;
+  entry.battery = "";
+
+  StaticJsonDocument<512> preview;
+  if (!deserializeJson(preview, raw) && preview["b"].is<JsonVariantConst>()) {
+    entry.hasBattery = true;
+    entry.battery = preview["b"].as<String>();
+  }
+
+  workingNodes.push_back(entry);
+
+  if (workingNodes.size() > MAX_WORKING_NODES) {
+    workingNodes.erase(workingNodes.begin());
+  }
+}
+
+// Store the most recent parsed payloads for the Monitoring page.
+void pushTrafficEntry(const String& source, const String& raw, const String& status, int rssi, const String& nodeId = "") {
+  TrafficEntry entry;
+  entry.atMs = millis();
+  entry.source = source;
+  entry.status = status;
+  entry.nodeId = nodeId;
+  entry.rssi = rssi;
+  entry.raw = clipTrafficText(raw);
+  entry.pretty = clipTrafficText(formatJsonPretty(raw));
+
+  if (trafficLog.size() >= MAX_TRAFFIC_LOG) {
+    trafficLog.erase(trafficLog.begin());
+  }
+  trafficLog.push_back(entry);
+  updateWorkingNode(source, entry.raw, status, rssi, nodeId);
+}
+
+// When normal WiFi is missing or broken, expose a local setup AP so the web UI stays reachable.
+void startConfigPortal() {
+  if (accessPointActive) {
+    return;
+  }
+
+  WiFi.mode(WIFI_AP_STA);
+  char suffix[7];
+  snprintf(suffix, sizeof(suffix), "%06X", static_cast<uint32_t>(ESP.getEfuseMac() & 0xFFFFFF));
+  accessPointSsid = String("CapiBridge-Setup-") + suffix;
+  WiFi.softAP(accessPointSsid.c_str());
+  accessPointActive = true;
+
+  Serial.println();
+  Serial.println("Setup AP enabled");
+  Serial.print("AP SSID: ");
+  Serial.println(accessPointSsid);
+  Serial.print("AP IP: ");
+  Serial.println(WiFi.softAPIP());
+}
+
+void stopConfigPortal() {
+  if (!accessPointActive) {
+    return;
+  }
+
+  WiFi.softAPdisconnect(true);
+  accessPointActive = false;
+  accessPointSsid = "";
+  WiFi.mode(WIFI_STA);
+}
+
+// Try to join the configured WiFi network first, then fall back to AP mode for setup.
 void setup_wifi() {
   Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(WIFI_SSID);
+  WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  if (!hasConfiguredWifi()) {
+    Serial.println("WiFi not configured yet. Starting setup AP.");
+    startConfigPortal();
+    return;
+  }
+
+  Serial.print("Connecting to ");
+  Serial.println(settings.wifiSsid);
+  WiFi.begin(settings.wifiSsid, settings.wifiPassword);
 
   unsigned long start = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - start < 20000) {
     delay(500);
     Serial.print(".");
   }
+
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println();
     Serial.println("WiFi connected");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
   } else {
-    Serial.println("\nWiFi connect timeout; continuing, will keep retrying via loop().");
+    Serial.println("\nWiFi connect timeout; setup AP enabled for configuration.");
+    startConfigPortal();
   }
 }
 
-// ---------- MQTT ----------
+// MQTT commands are buffered here and handled later from loop() so callback work stays minimal.
 void callback(char* incomingTopic, byte* payload, unsigned int length) {
   String topicStr = String(incomingTopic);
   mqttMessage = "";
 
   for (unsigned int i = 0; i < length; i++) {
-    mqttMessage += (char)payload[i];
+    mqttMessage += static_cast<char>(payload[i]);
   }
 
   if (topicStr == CAPIBRIDGE_COMMAND_TOPIC && mqttMessage.length() > 0) {
@@ -98,59 +379,53 @@ void callback(char* incomingTopic, byte* payload, unsigned int length) {
   }
 }
 
-void reconnect() {
-  while (!client.connected()) {
-    Serial.print("Attempting MQTT connection... ");
+// Reconnect to the broker with a retry delay, and re-subscribe to the command topic on success.
+void reconnectMqtt() {
+  if (client.connected() || WiFi.status() != WL_CONNECTED || !hasConfiguredMqtt()) {
+    return;
+  }
 
-    client.setBufferSize(2048); // headroom for discovery payloads
+  if (millis() - lastMqttAttempt < 5000) {
+    return;
+  }
 
-    String client_id = "CapiBridge2-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+  lastMqttAttempt = millis();
+  client.setBufferSize(2048);
+  client.setServer(settings.mqttServer, settings.mqttPort);
+  client.setCallback(callback);
 
-    // Global LWT so entities can use same availability_topic
-    bool ok = client.connect(
-      client_id.c_str(),
-      MQTT_USERNAME, MQTT_PASSWORD,
-      CAPIBRIDGE_LWT_TOPIC, 0, true, AVAIL_OFF
-    );
+  String clientId = "CapiBridge-" + String(static_cast<uint32_t>(ESP.getEfuseMac()), HEX);
 
-    if (ok) {
-      Serial.println("MQTT connected");
-      client.setCallback(callback);
-      client.subscribe(CAPIBRIDGE_COMMAND_TOPIC);
+  bool ok = client.connect(
+    clientId.c_str(),
+    settings.mqttUsername,
+    settings.mqttPassword,
+    CAPIBRIDGE_LWT_TOPIC, 0, true, AVAIL_OFF
+  );
 
-      // Bring CapiBridge availability online
-      client.publish(CAPIBRIDGE_LWT_TOPIC, AVAIL_ON, true);
-    } else {
-      Serial.print("MQTT failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 1 second");
-      delay(1000);
-    }
+  if (ok) {
+    Serial.println("MQTT connected");
+    client.subscribe(CAPIBRIDGE_COMMAND_TOPIC);
+    client.publish(CAPIBRIDGE_LWT_TOPIC, AVAIL_ON, true);
+  } else {
+    Serial.print("MQTT failed, rc=");
+    Serial.println(client.state());
   }
 }
 
-
-
-
-
-// ---------- XOR Buffer (optional) ----------
-
-
+// LoRa and ESP-NOW share the same XOR obfuscation helper.
 void xorBuffer(uint8_t* buf, size_t len) {
-  const uint8_t key[] = encryption_key;
-  const int keyLen = encryption_key_length;
+  const int keyLen = settings.encryptionKeyLength;
+  if (keyLen <= 0) {
+    return;
+  }
 
   for (size_t i = 0; i < len; ++i) {
-    buf[i] ^= key[i % keyLen];
+    buf[i] ^= settings.encryptionKey[i % keyLen];
   }
 }
 
-
-//---------------------- XOR END ----------------------//
-
-
-
-// ---------- Discovery builders ----------
+// Publish Home Assistant discovery topics only once per node/entity unless forced by settings.
 void publishSensorDiscoveryOnce(
   const String& nodeId,
   const String& suffix,
@@ -162,44 +437,40 @@ void publishSensorDiscoveryOnce(
   bool hasStateClassMeasurement,
   bool isDiagnostic = false
 ) {
-  #if !DISCOVERY_EVERY_PACKET
-    if (discoveryPublishedFor(nodeId, suffix)) return;
-  #endif
+  if (!client.connected()) {
+    return;
+  }
 
+  if (!settings.discoveryEveryPacket && discoveryPublishedFor(nodeId, suffix)) {
+    return;
+  }
 
   StaticJsonDocument<768> cfg;
   cfg["name"] = friendlyName;
   if (icon.length()) cfg["icon"] = icon;
   if (device_class.length()) cfg["device_class"] = device_class;
   if (unit.length()) cfg["unit_of_measurement"] = unit;
+  if (isDiagnostic) cfg["entity_category"] = "diagnostic";
 
-  // mark as diagnostic if requested
-  if (isDiagnostic) {
-    cfg["entity_category"] = "diagnostic";
-  }
-
-  // State + availability
   String baseStateTopic = String(isBinarySensor ? BINARY_SENSOR_TOPIC : SENSOR_TOPIC) + nodeId + suffix;
   cfg["state_topic"] = baseStateTopic;
   cfg["unique_id"] = nodeId + suffix;
   cfg["availability_topic"] = CAPIBRIDGE_LWT_TOPIC;
 
-  // Binary payload mapping (we publish "on"/"off")
   if (isBinarySensor) {
-    cfg["payload_on"]  = "on";
+    cfg["payload_on"] = "on";
     cfg["payload_off"] = "off";
   }
 
-  // state_class where useful
   if (hasStateClassMeasurement) {
     cfg["state_class"] = "measurement";
   }
 
-  // Proper HA device object
   JsonObject dev = cfg.createNestedObject("device");
-  dev["identifiers"].add(nodeId);
+  JsonArray identifiers = dev.createNestedArray("identifiers");
+  identifiers.add(nodeId);
   dev["name"] = nodeId;
-  dev["model"] = nodeId;                   // or a real model label
+  dev["model"] = nodeId;
   dev["manufacturer"] = "PricelessToolkit";
 
   String payload;
@@ -208,27 +479,24 @@ void publishSensorDiscoveryOnce(
   String configTopic = String(isBinarySensor ? BINARY_SENSOR_TOPIC : SENSOR_TOPIC) + nodeId + suffix + "/config";
   client.publish(configTopic.c_str(), payload.c_str(), MQTT_RETAIN);
 
-  #if !DISCOVERY_EVERY_PACKET
-  markDiscoveryPublished(nodeId, suffix);
-  #endif
+  if (!settings.discoveryEveryPacket) {
+    markDiscoveryPublished(nodeId, suffix);
+  }
 }
 
-// ---------- Publishing states (with light formatting) ----------
 static String fmtFloat(double v, uint8_t digits) {
   char buf[32];
   dtostrf(v, 0, digits, buf);
   return String(buf);
 }
 
-// Publish a single key if present.
-// topicSuffix must match what discovery used.
+// Publish a single sensor field to MQTT if that key exists in the incoming payload.
 void publishKeyIfPresent(const JsonDocument& doc, const char* key, const String& nodeId, const String& topicSuffix, bool isBinary, bool convertForHA = false) {
-  if (!doc.containsKey(key)) return;
+  if (!client.connected() || !doc.containsKey(key)) return;
 
   String stateTopic = String(isBinary ? BINARY_SENSOR_TOPIC : SENSOR_TOPIC) + nodeId + topicSuffix;
 
   if (isBinary) {
-    // Normalize to "on"/"off"
     String val = doc[key].as<String>();
     val.toLowerCase();
     if (val == "1" || val == "true") val = "on";
@@ -240,7 +508,7 @@ void publishKeyIfPresent(const JsonDocument& doc, const char* key, const String&
   } else {
     if (doc[key].is<float>() || doc[key].is<double>() || doc[key].is<long>() || doc[key].is<int>()) {
       double v = doc[key].as<double>();
-      if (convertForHA) v = v / 1000.0;       // mA -> A for "pw"
+      if (convertForHA) v = v / 1000.0;
       String val = fmtFloat(v, convertForHA ? 3 : 2);
       client.publish(stateTopic.c_str(), val.c_str(), MQTT_RETAIN);
     } else {
@@ -250,86 +518,99 @@ void publishKeyIfPresent(const JsonDocument& doc, const char* key, const String&
   }
 }
 
-// ---------- Map JSON -> entities (discovery + state) ----------
-void ensureDiscoveryAndPublish(const JsonDocument& doc) {
-  // Only proceed if GATEWAY_KEY matches
-  if (!doc.containsKey("k") || doc["k"].as<String>() != GATEWAY_KEY) {
+// Validate gateway key/id, announce entities, and publish the current payload values to MQTT.
+bool ensureDiscoveryAndPublish(const JsonDocument& doc, String& status, String& nodeId) {
+  if (!client.connected()) {
+    status = "mqtt_offline";
+    return false;
+  }
+
+  if (!doc.containsKey("k") || doc["k"].as<String>() != settings.gatewayKey) {
     Serial.println("Network Key Not Found or Invalid in JSON");
-    return;
+    status = "wrong_key";
+    return false;
   }
   if (!doc.containsKey("id")) {
     Serial.println("Missing 'id' in JSON");
-    return;
+    status = "missing_id";
+    return false;
   }
 
   String id = doc["id"].as<String>();
+  nodeId = id;
 
-  // ---- Discovery (only once per id+key) ----
-  // Numeric sensors
-  if (doc.containsKey("r"))   publishSensorDiscoveryOnce(id, "/rssi",     "RSSI",          "mdi:signal",         "signal_strength", "dBm", false, true, true);
-  if (doc.containsKey("b"))   publishSensorDiscoveryOnce(id, "/batt",     "Battery",       "mdi:battery",        "battery",         "%",   false, true, true);
-  if (doc.containsKey("v"))   publishSensorDiscoveryOnce(id, "/volt",     "Volt",          "mdi:flash-triangle", "voltage",         "V",   false, true);
-  if (doc.containsKey("pw"))  publishSensorDiscoveryOnce(id, "/current",  "Current",       "mdi:current-dc",     "current",         "A",   false, true); // mA -> A
-  if (doc.containsKey("l"))   publishSensorDiscoveryOnce(id, "/lx",       "Lux",           "mdi:brightness-1",   "illuminance",     "lx",  false, true);
-  if (doc.containsKey("w"))   publishSensorDiscoveryOnce(id, "/weight",   "Weight",        "mdi:weight",         "weight",          "g",   false, true);
-  if (doc.containsKey("t"))   publishSensorDiscoveryOnce(id, "/tmp",      "Temperature",   "mdi:thermometer",    "temperature",     "°C",  false, true);
-  if (doc.containsKey("t2"))  publishSensorDiscoveryOnce(id, "/tmp2",     "Temperature 2", "mdi:thermometer",    "temperature",     "°C",  false, true);
-  if (doc.containsKey("hu"))  publishSensorDiscoveryOnce(id, "/humidity", "Humidity",      "mdi:water-percent",  "humidity",        "%",   false, true);
-  if (doc.containsKey("mo"))  publishSensorDiscoveryOnce(id, "/moisture", "Moisture",      "mdi:water-percent",  "moisture",        "%",   false, true);
-  if (doc.containsKey("atm")) publishSensorDiscoveryOnce(id, "/pressure", "Pressure",      "mdi:gauge",          "pressure",        "kPa", false, true);
-  if (doc.containsKey("cd"))  publishSensorDiscoveryOnce(id, "/co2",      "Carbon Dioxide","mdi:molecule-co2",   "carbon_dioxide",  "ppm", false, true);
+  if (doc.containsKey("r"))   publishSensorDiscoveryOnce(id, "/rssi",     "RSSI",           "mdi:signal",         "signal_strength", "dBm", false, true, true);
+  if (doc.containsKey("b"))   publishSensorDiscoveryOnce(id, "/batt",     "Battery",        "mdi:battery",        "battery",         "%",   false, true, true);
+  if (doc.containsKey("v"))   publishSensorDiscoveryOnce(id, "/volt",     "Volt",           "mdi:flash-triangle", "voltage",         "V",   false, true);
+  if (doc.containsKey("pw"))  publishSensorDiscoveryOnce(id, "/current",  "Current",        "mdi:current-dc",     "current",         "A",   false, true);
+  if (doc.containsKey("l"))   publishSensorDiscoveryOnce(id, "/lx",       "Lux",            "mdi:brightness-1",   "illuminance",     "lx",  false, true);
+  if (doc.containsKey("w"))   publishSensorDiscoveryOnce(id, "/weight",   "Weight",         "mdi:weight",         "weight",          "g",   false, true);
+  if (doc.containsKey("t"))   publishSensorDiscoveryOnce(id, "/tmp",      "Temperature",    "mdi:thermometer",    "temperature",     "°C",  false, true);
+  if (doc.containsKey("t2"))  publishSensorDiscoveryOnce(id, "/tmp2",     "Temperature 2",  "mdi:thermometer",    "temperature",     "°C",  false, true);
+  if (doc.containsKey("hu"))  publishSensorDiscoveryOnce(id, "/humidity", "Humidity",       "mdi:water-percent",  "humidity",        "%",   false, true);
+  if (doc.containsKey("mo"))  publishSensorDiscoveryOnce(id, "/moisture", "Moisture",       "mdi:water-percent",  "moisture",        "%",   false, true);
+  if (doc.containsKey("atm")) publishSensorDiscoveryOnce(id, "/pressure", "Pressure",       "mdi:gauge",          "pressure",        "kPa", false, true);
+  if (doc.containsKey("cd"))  publishSensorDiscoveryOnce(id, "/co2",      "Carbon Dioxide", "mdi:molecule-co2",   "carbon_dioxide",  "ppm", false, true);
 
-  // Text sensors
-  if (doc.containsKey("rw"))  publishSensorDiscoveryOnce(id, "/row",      "Text",          "mdi:text",           "",                "",    false, false);
-  if (doc.containsKey("s"))   publishSensorDiscoveryOnce(id, "/state",    "State",         "mdi:list-status",    "",                "",    false, false);
+  if (doc.containsKey("rw"))  publishSensorDiscoveryOnce(id, "/row",      "Text",           "mdi:text",           "",                "",    false, false);
+  if (doc.containsKey("s"))   publishSensorDiscoveryOnce(id, "/state",    "State",          "mdi:list-status",    "",                "",    false, false);
 
-  // Binary sensors (on/off)
-  if (doc.containsKey("bt"))  publishSensorDiscoveryOnce(id, "/button",   "Button",        "mdi:button-pointer", "",                "",    true,  false);
-  if (doc.containsKey("m"))   publishSensorDiscoveryOnce(id, "/motion",   "Motion",        "mdi:motion",         "motion",          "",    true,  false);
-  if (doc.containsKey("dr"))  publishSensorDiscoveryOnce(id, "/door",     "Door",          "mdi:door",           "door",            "",    true,  false);
-  if (doc.containsKey("wd"))  publishSensorDiscoveryOnce(id, "/window",   "Window",        "mdi:window-closed",  "window",          "",    true,  false);
-  if (doc.containsKey("vb"))  publishSensorDiscoveryOnce(id, "/vibration","Vibration",     "mdi:vibrate",        "vibration",       "",    true,  false);
+  if (doc.containsKey("bt"))  publishSensorDiscoveryOnce(id, "/button",   "Button",         "mdi:button-pointer", "",                "",    true,  false);
+  if (doc.containsKey("m"))   publishSensorDiscoveryOnce(id, "/motion",   "Motion",         "mdi:motion",         "motion",          "",    true,  false);
+  if (doc.containsKey("dr"))  publishSensorDiscoveryOnce(id, "/door",     "Door",           "mdi:door",           "door",            "",    true,  false);
+  if (doc.containsKey("wd"))  publishSensorDiscoveryOnce(id, "/window",   "Window",         "mdi:window-closed",  "window",          "",    true,  false);
+  if (doc.containsKey("vb"))  publishSensorDiscoveryOnce(id, "/vibration", "Vibration",     "mdi:vibrate",        "vibration",       "",    true,  false);
 
-  // ---- State publish ----
-  publishKeyIfPresent(doc, "r",   id, "/rssi",     false);
-  publishKeyIfPresent(doc, "b",   id, "/batt",     false);
-  publishKeyIfPresent(doc, "v",   id, "/volt",     false);
-  publishKeyIfPresent(doc, "pw",  id, "/current",  false, true); // mA -> A
-  publishKeyIfPresent(doc, "l",   id, "/lx",       false);
-  publishKeyIfPresent(doc, "w",   id, "/weight",   false);
-  publishKeyIfPresent(doc, "t",   id, "/tmp",      false);
-  publishKeyIfPresent(doc, "t2",  id, "/tmp2",     false);
-  publishKeyIfPresent(doc, "hu",  id, "/humidity", false);
-  publishKeyIfPresent(doc, "mo",  id, "/moisture", false);
-  publishKeyIfPresent(doc, "rw",  id, "/row",      false);
-  publishKeyIfPresent(doc, "s",   id, "/state",    false);
-  publishKeyIfPresent(doc, "atm", id, "/pressure", false);
-  publishKeyIfPresent(doc, "cd",  id, "/co2",      false);
-  publishKeyIfPresent(doc, "bt",  id, "/button",   true);
-  publishKeyIfPresent(doc, "m",   id, "/motion",   true);
-  publishKeyIfPresent(doc, "dr",  id, "/door",     true);
-  publishKeyIfPresent(doc, "wd",  id, "/window",   true);
-  publishKeyIfPresent(doc, "vb",  id, "/vibration",true);
+  publishKeyIfPresent(doc, "r",   id, "/rssi",      false);
+  publishKeyIfPresent(doc, "b",   id, "/batt",      false);
+  publishKeyIfPresent(doc, "v",   id, "/volt",      false);
+  publishKeyIfPresent(doc, "pw",  id, "/current",   false, true);
+  publishKeyIfPresent(doc, "l",   id, "/lx",        false);
+  publishKeyIfPresent(doc, "w",   id, "/weight",    false);
+  publishKeyIfPresent(doc, "t",   id, "/tmp",       false);
+  publishKeyIfPresent(doc, "t2",  id, "/tmp2",      false);
+  publishKeyIfPresent(doc, "hu",  id, "/humidity",  false);
+  publishKeyIfPresent(doc, "mo",  id, "/moisture",  false);
+  publishKeyIfPresent(doc, "rw",  id, "/row",       false);
+  publishKeyIfPresent(doc, "s",   id, "/state",     false);
+  publishKeyIfPresent(doc, "atm", id, "/pressure",  false);
+  publishKeyIfPresent(doc, "cd",  id, "/co2",       false);
+  publishKeyIfPresent(doc, "bt",  id, "/button",    true);
+  publishKeyIfPresent(doc, "m",   id, "/motion",    true);
+  publishKeyIfPresent(doc, "dr",  id, "/door",      true);
+  publishKeyIfPresent(doc, "wd",  id, "/window",    true);
+  publishKeyIfPresent(doc, "vb",  id, "/vibration", true);
+  status = "valid";
+  return true;
 }
 
-// ---------- JSON parsing ----------
-void parseIncomingPacket(const String& serialrow) {
-  StaticJsonDocument<2048> doc; // more headroom
+// Shared JSON parsing path used by both ESP-NOW and LoRa receive handlers.
+void parseIncomingPacket(const String& source, const String& serialrow, int rssi = 0) {
+  StaticJsonDocument<2048> doc;
   DeserializationError error = deserializeJson(doc, serialrow);
   if (error) {
-    Serial.print("deserializeJson() returned ");
+    Serial.print("RX JSON parse error: ");
     Serial.println(error.f_str());
+    String logged = String("RX JSON parse error: ") + error.f_str();
+    pushTrafficEntry(source, logged, "invalid_json", rssi);
     return;
   }
-  ensureDiscoveryAndPublish(doc);
+
+  String status;
+  String nodeId;
+  ensureDiscoveryAndPublish(doc, status, nodeId);
+  pushTrafficEntry(source, serialrow, status, rssi, nodeId);
 }
 
-// ---------- Diagnostics ----------
+// Periodically publish the gateway WiFi RSSI as a diagnostic entity for Home Assistant.
 void diag() {
-  if (millis() - lastDiagTimer >= diagTimer) {
-    long rssi = WiFi.RSSI();
+  if (!client.connected()) {
+    return;
+  }
 
-    // Auto-discovery for CapiBridge diagnostic RSSI (only once)
+  if (millis() - lastDiagTimer >= diagTimer) {
+    long rssi = WiFi.isConnected() ? WiFi.RSSI() : 0;
+
     static bool diagDiscoverySent = false;
     if (!diagDiscoverySent) {
       StaticJsonDocument<384> cfg;
@@ -341,7 +622,8 @@ void diag() {
       cfg["state_topic"] = CAPIBRIDGE_RSSI_TOPIC;
       cfg["unique_id"] = "capibridge_rssi";
       JsonObject dev = cfg.createNestedObject("device");
-      dev["identifiers"].add("capibridge");
+      JsonArray identifiers = dev.createNestedArray("identifiers");
+      identifiers.add("capibridge");
       dev["name"] = "CapiBridge";
       dev["model"] = "CapiBridge";
       dev["manufacturer"] = "PricelessToolkit";
@@ -351,46 +633,37 @@ void diag() {
       diagDiscoverySent = true;
     }
 
-    // Sends RSSI value
     client.publish(CAPIBRIDGE_RSSI_TOPIC, String(rssi).c_str(), MQTT_RETAIN);
     lastDiagTimer = millis();
   }
 }
 
-
-// ---------- Command paths ----------
+// Forward MQTT command payloads out over LoRa after removing the transport selector field.
 void SendLoRaCommands() {
   if (newCommandReceived && mqttMessage.indexOf("\"rm\":\"lora\"") != -1) {
-    // Temporarily disable the DIxx interrupt so the TX-done pulse isn't mistaken for RX-done.
-    DETACH_IRQ();
-
-    // Indicate “sending” with the LED
+    radio.detachInterrupt();
     digitalWrite(LED_PIN, LOW);
     LedStartTime = millis();
 
-    // --- strip "rm" from payload (keep everything else) ---
     String cleaned = mqttMessage;
-    {
-      StaticJsonDocument<2048> doc;
-      DeserializationError e = deserializeJson(doc, mqttMessage);
-      if (!e) {
-        doc.remove("rm");           // remove the routing hint
-        cleaned = "";
-        serializeJson(doc, cleaned);
-      } // if parse fails, fall back to original message (no strip)
+    StaticJsonDocument<2048> doc;
+    DeserializationError e = deserializeJson(doc, mqttMessage);
+    if (!e) {
+      doc.remove("rm");
+      cleaned = "";
+      serializeJson(doc, cleaned);
     }
 
-    #if LoRa_Encryption
+    int state = RADIOLIB_ERR_UNKNOWN;
+    if (settings.loraEncryption) {
       size_t len = cleaned.length();
       uint8_t buf[len];
       memcpy(buf, cleaned.c_str(), len);
-
-      xorBuffer(buf, len);                // apply XOR in-place
-      int state = radio.transmit(buf, len);
-    #else
-      int state = radio.transmit(cleaned);
-    #endif
-
+      xorBuffer(buf, len);
+      state = radio.transmit(buf, len);
+    } else {
+      state = radio.transmit(cleaned);
+    }
 
     if (state == RADIOLIB_ERR_NONE) {
       Serial.print("LoRa Command sent: ");
@@ -400,53 +673,40 @@ void SendLoRaCommands() {
       Serial.println(state);
     }
 
-    // Reset the MQTT command topic so it won't re-trigger on reconnect
     client.publish(CAPIBRIDGE_COMMAND_TOPIC, "", true);
     newCommandReceived = false;
-
-    SET_DIO_ACTION(radio, onReceive);
-
-    // Clear any RX flag we may have picked up spuriously
     packetReceived = false;
 
-    // Go back into non-blocking receive
-    if (radio.startReceive(0) != RADIOLIB_ERR_NONE) {
-      Serial.println("Failed to restart RX");
+    if (!radio.armReceive(onReceive)) {
+      Serial.println("Failed to re-arm LoRa receive mode");
     }
   }
 }
 
-
+// Forward MQTT command payloads to the ESP-NOW co-processor over UART.
 void SendESPNOWCommands() {
   if (newCommandReceived && mqttMessage.indexOf("\"rm\":\"espnow\"") != -1) {
     if (Serial1.available() == 0) {
-
-      // --- strip "rm" from payload (keep everything else) ---
       String cleaned = mqttMessage;
-      {
-        StaticJsonDocument<2048> doc;
-        DeserializationError e = deserializeJson(doc, mqttMessage);
-        if (!e) {
-          doc.remove("rm");         // remove the routing hint
-          cleaned = "";
-          serializeJson(doc, cleaned);
-        } // if parse fails, fall back to original message (no strip)
+      StaticJsonDocument<2048> doc;
+      DeserializationError e = deserializeJson(doc, mqttMessage);
+      if (!e) {
+        doc.remove("rm");
+        cleaned = "";
+        serializeJson(doc, cleaned);
       }
 
-      // Binary-safe encryption + newline framing
-      #if ESPNOW_Encryption
+      if (settings.espnowEncryption) {
         size_t len = cleaned.length();
         uint8_t buf[len];
         memcpy(buf, cleaned.c_str(), len);
-
-        xorBuffer(buf, len);           // apply XOR in-place
-        Serial1.write(buf, len);       // send encrypted bytes
-        Serial1.write('\n');           // newline AFTER encrypted bytes
-      #else
+        xorBuffer(buf, len);
+        Serial1.write(buf, len);
+        Serial1.write('\n');
+      } else {
         Serial1.print(cleaned);
         Serial1.print('\n');
-      #endif
-
+      }
 
       Serial.print("ESP-NOW Command sent: ");
       Serial.println(cleaned);
@@ -457,160 +717,405 @@ void SendESPNOWCommands() {
   }
 }
 
-
+// Boot-time console output helps confirm the active radio settings after loading defaults or flash values.
 void printLoRaConfig() {
+  Serial.print(F("LoRa module: "));
+  Serial.println(radio.moduleLabel());
+
   Serial.print(F("Frequency Band: "));
-  Serial.print(BAND, 1);
+  Serial.print(settings.band, 1);
   Serial.println(F(" MHz"));
 
   Serial.print(F("TX Power: "));
-  Serial.print(LORA_TX_POWER);
+  Serial.print(settings.loraTxPower);
   Serial.println(F(" dBm"));
 
   Serial.print(F("Signal Bandwidth: "));
-  Serial.print(LORA_SIGNAL_BANDWIDTH, 1);
+  Serial.print(settings.loraSignalBandwidth, 1);
   Serial.println(F(" kHz"));
 
   Serial.print(F("Spreading Factor: SF"));
-  Serial.println(LORA_SPREADING_FACTOR);
+  Serial.println(settings.loraSpreadingFactor);
 
   Serial.print(F("Coding Rate: 4/"));
-  Serial.println(LORA_CODING_RATE);
+  Serial.println(settings.loraCodingRate);
 
   Serial.print(F("Sync Word: 0x"));
-  Serial.println(LORA_SYNC_WORD, HEX);
+  Serial.println(settings.loraSyncWord, HEX);
 
   Serial.print(F("Preamble Length: "));
-  Serial.println(LORA_PREAMBLE_LENGTH);
-
-  Serial.print(F("Gateway KEY: "));
-  Serial.println(GATEWAY_KEY);
-
-  Serial.print(F("LoRa Encryption: "));
-  Serial.println(LoRa_Encryption ? F("enabled") : F("disabled"));
-
-  Serial.print(F("ESP-NOW Encryption: "));
-  Serial.println(ESPNOW_Encryption ? F("enabled") : F("disabled"));
-
-  // ---- Print encryption key defined as a macro initializer ----
-  {
-    const uint8_t key[] = encryption_key;
-    const size_t K = sizeof(key) / sizeof(key[0]);
-
-    Serial.print(F("Encryption KEY: "));
-    for (size_t i = 0; i < K; ++i) {
-      Serial.printf("0x%02X", key[i]);
-      if (i + 1 < K) Serial.print(", ");
-    }
-    Serial.println();
-  }
-
-  Serial.println(F("=============================="));
+  Serial.println(settings.loraPreambleLength);
 }
 
+void printActiveConfig() {
+  Serial.println();
+  Serial.println(F("========== Active Config =========="));
+  Serial.print(F("Config Source: "));
+  Serial.println(settingsSourceLabel());
 
-// ---------- Setup / Loop ----------
+  Serial.println(F("[WiFi]"));
+  Serial.print(F("SSID: "));
+  Serial.println(settings.wifiSsid);
+  Serial.print(F("Password: "));
+  Serial.println(settings.wifiPassword);
+  Serial.print(F("Connected: "));
+  Serial.println(WiFi.status() == WL_CONNECTED ? F("yes") : F("no"));
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print(F("IP Address: "));
+    Serial.println(WiFi.localIP());
+    Serial.print(F("RSSI: "));
+    Serial.print(WiFi.RSSI());
+    Serial.println(F(" dBm"));
+  }
+  if (accessPointActive) {
+    Serial.print(F("Setup AP SSID: "));
+    Serial.println(accessPointSsid);
+    Serial.print(F("Setup AP IP: "));
+    Serial.println(WiFi.softAPIP());
+  }
+
+  Serial.println(F("[MQTT]"));
+  Serial.print(F("Server: "));
+  Serial.println(settings.mqttServer);
+  Serial.print(F("Port: "));
+  Serial.println(settings.mqttPort);
+  Serial.print(F("Username: "));
+  Serial.println(settings.mqttUsername);
+  Serial.print(F("Password: "));
+  Serial.println(settings.mqttPassword);
+  Serial.print(F("Connected: "));
+  Serial.println(client.connected() ? F("yes") : F("no"));
+
+  Serial.println(F("[Gateway]"));
+  Serial.print(F("Gateway KEY: "));
+  Serial.println(settings.gatewayKey);
+  Serial.print(F("LoRa Encryption: "));
+  Serial.println(settings.loraEncryption ? F("enabled") : F("disabled"));
+  Serial.print(F("ESP-NOW Encryption: "));
+  Serial.println(settings.espnowEncryption ? F("enabled") : F("disabled"));
+  Serial.print(F("Encryption KEY: "));
+  for (uint8_t i = 0; i < settings.encryptionKeyLength; ++i) {
+    Serial.printf("0x%02X", settings.encryptionKey[i]);
+    if (i + 1 < settings.encryptionKeyLength) Serial.print(", ");
+  }
+  Serial.println();
+  Serial.print(F("Discovery Every Packet: "));
+  Serial.println(settings.discoveryEveryPacket ? F("true") : F("false"));
+  Serial.print(F("ROW Debug: "));
+  Serial.println(settings.rowDebug ? F("true") : F("false"));
+
+  Serial.println(F("[LoRa]"));
+  printLoRaConfig();
+  Serial.println(F("==================================="));
+}
+
+// Web API helpers serialize JSON responses for the embedded UI.
+void sendJsonResponse(int statusCode, const JsonDocument& doc) {
+  String payload;
+  serializeJson(doc, payload);
+  server.send(statusCode, "application/json", payload);
+}
+
+// Serve the single-page web UI shell.
+void handleRoot() {
+  if (!ensureWebUiAuth()) {
+    return;
+  }
+  server.send_P(200, "text/html", WEB_UI_HTML);
+}
+
+// Return the current runtime settings so the Settings page can populate its form fields.
+void handleGetSettings() {
+  if (!ensureWebUiAuth()) {
+    return;
+  }
+  StaticJsonDocument<2048> doc;
+  settingsToJson(settings, doc, true);
+  sendJsonResponse(200, doc);
+}
+
+// Return live gateway health information for the Status page.
+void handleGetStatus() {
+  if (!ensureWebUiAuth()) {
+    return;
+  }
+  StaticJsonDocument<512> doc;
+  doc["wifiConnected"] = WiFi.status() == WL_CONNECTED;
+  doc["mqttConnected"] = client.connected();
+  doc["ipAddress"] = WiFi.status() == WL_CONNECTED ? ipToString(WiFi.localIP()) : String("");
+  doc["apEnabled"] = accessPointActive;
+  doc["apSsid"] = accessPointSsid;
+  doc["wifiRssi"] = WiFi.status() == WL_CONNECTED ? String(WiFi.RSSI()) + " dBm" : "Unavailable";
+  doc["freeHeap"] = ESP.getFreeHeap();
+  doc["uptime"] = formatUptime(millis());
+  doc["firmwareVersion"] = FIRMWARE_VERSION;
+  doc["settingsSource"] = settingsSourceLabel();
+  sendJsonResponse(200, doc);
+}
+
+// Return the packet history and mirrored serial log for the Monitoring page.
+void handleGetTraffic() {
+  if (!ensureWebUiAuth()) {
+    return;
+  }
+  StaticJsonDocument<24576> doc;
+  JsonArray items = doc.createNestedArray("items");
+  for (const auto& entry : trafficLog) {
+    JsonObject item = items.createNestedObject();
+    item["time"] = formatTrafficTime(entry.atMs);
+    item["source"] = entry.source;
+    item["status"] = entry.status;
+    item["nodeId"] = entry.nodeId;
+    if (entry.rssi != 0) {
+      item["rssi"] = entry.rssi;
+    }
+    item["raw"] = entry.raw;
+    item["pretty"] = entry.pretty;
+  }
+  JsonArray serialLines = doc.createNestedArray("serialLines");
+  for (const auto& line : serialLog) {
+    serialLines.add(line);
+  }
+  JsonArray nodes = doc.createNestedArray("nodes");
+  for (const auto& entry : workingNodes) {
+    JsonObject node = nodes.createNestedObject();
+    node["time"] = formatTrafficTime(entry.atMs);
+    node["ageSeconds"] = (millis() - entry.atMs) / 1000;
+    node["source"] = entry.source;
+    node["status"] = entry.status;
+    node["nodeId"] = entry.nodeId;
+    if (entry.rssi != 0) {
+      node["rssi"] = entry.rssi;
+    }
+    if (entry.hasBattery) {
+      node["battery"] = entry.battery;
+    }
+  }
+  sendJsonResponse(200, doc);
+}
+
+// Delay the reboot slightly so HTTP responses finish before ESP.restart() is called.
+void scheduleReboot() {
+  rebootAt = millis() + 1500;
+}
+
+// Validate and save settings posted from the web UI, then reboot to apply them cleanly.
+void handlePostSettings() {
+  if (!ensureWebUiAuth()) {
+    return;
+  }
+  if (!server.hasArg("plain")) {
+    StaticJsonDocument<192> doc;
+    doc["ok"] = false;
+    doc["error"] = "Missing JSON body.";
+    sendJsonResponse(400, doc);
+    return;
+  }
+
+  StaticJsonDocument<2048> request;
+  DeserializationError error = deserializeJson(request, server.arg("plain"));
+  if (error) {
+    StaticJsonDocument<192> doc;
+    doc["ok"] = false;
+    doc["error"] = "Invalid JSON body.";
+    sendJsonResponse(400, doc);
+    return;
+  }
+
+  GatewaySettings updated = settings;
+  String validationError;
+  if (!settingsFromJson(request, updated, validationError)) {
+    StaticJsonDocument<256> doc;
+    doc["ok"] = false;
+    doc["error"] = validationError;
+    sendJsonResponse(400, doc);
+    return;
+  }
+
+  if (!settingsStore.save(updated)) {
+    StaticJsonDocument<256> doc;
+    doc["ok"] = false;
+    doc["error"] = "Failed to save settings to flash.";
+    sendJsonResponse(500, doc);
+    return;
+  }
+
+  settings = updated;
+  StaticJsonDocument<192> doc;
+  doc["ok"] = true;
+  doc["rebootScheduled"] = true;
+  sendJsonResponse(200, doc);
+  scheduleReboot();
+}
+
+// Manual reboot action from the Status page.
+void handleReboot() {
+  if (!ensureWebUiAuth()) {
+    return;
+  }
+  StaticJsonDocument<128> doc;
+  doc["ok"] = true;
+  sendJsonResponse(200, doc);
+  scheduleReboot();
+}
+
+// Restore runtime settings from internal upload defaults and clear the saved flash copy.
+void handleReset() {
+  if (!ensureWebUiAuth()) {
+    return;
+  }
+  setDefaultSettings(settings);
+  settingsStore.save(settings);
+
+  StaticJsonDocument<128> doc;
+  doc["ok"] = true;
+  sendJsonResponse(200, doc);
+  scheduleReboot();
+}
+
+void handleNotFound() {
+  StaticJsonDocument<128> doc;
+  doc["ok"] = false;
+  doc["error"] = "Not found";
+  sendJsonResponse(404, doc);
+}
+
+// Register every API route used by the embedded single-page web interface.
+void setupWebServer() {
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/api/settings", HTTP_GET, handleGetSettings);
+  server.on("/api/settings", HTTP_POST, handlePostSettings);
+  server.on("/api/status", HTTP_GET, handleGetStatus);
+  server.on("/api/traffic", HTTP_GET, handleGetTraffic);
+  server.on("/api/reboot", HTTP_POST, handleReboot);
+  server.on("/api/reset", HTTP_POST, handleReset);
+  server.onNotFound(handleNotFound);
+  server.begin();
+}
+
+// Run deferred reboot requests from the main loop.
+void maybeReboot() {
+  if (rebootAt != 0 && millis() >= rebootAt) {
+    Serial.println("Rebooting to apply settings...");
+    delay(150);
+    ESP.restart();
+  }
+}
+
+// Keep station mode connected when possible and keep the setup AP available as a fallback.
+void maintainWifi() {
+  if (WiFi.status() == WL_CONNECTED) {
+    if (accessPointActive) {
+      stopConfigPortal();
+    }
+    return;
+  }
+
+  if (!accessPointActive) {
+    startConfigPortal();
+  }
+
+  if (hasConfiguredWifi() && millis() - lastWifiTry > 5000) {
+    WiFi.reconnect();
+    lastWifiTry = millis();
+  }
+}
+
+// Hardware, settings, WiFi, MQTT, radio, and web UI all come online here at boot.
 void setup() {
-  Serial1.begin(BAUD, SERIAL_8N1, RXPIN, TXPIN); // Serial between ESP1 and ESP2
+  Serial1.begin(BAUD, SERIAL_8N1, RXPIN, TXPIN);
   Serial.begin(115200);
 
   pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, HIGH);   // active-low: HIGH = OFF
+  digitalWrite(LED_PIN, HIGH);
+
+  setDefaultSettings(settings);
+  settingsStore.load(settings);
 
   setup_wifi();
+  setupWebServer();
 
   client.setBufferSize(2048);
-  client.setServer(MQTT_SERVER, MQTT_PORT);
-  reconnect();
+  client.setCallback(callback);
+  reconnectMqtt();
 
-  // SPI + Radio
   SPI.begin(CONFIG_CLK, CONFIG_MISO, CONFIG_MOSI, CONFIG_NSS);
 
-  #if (LORA_MODULE == LORA_MODULE_SX1276)
-    Serial.println("LoRa Ra-01H SX1276 initialization...");
-    printLoRaConfig();
-  
-  #elif (LORA_MODULE == LORA_MODULE_SX1262)
-    Serial.println("LoRa Ra-01SH SX1262 initialization...");
-    printLoRaConfig();
-  
-  #elif (LORA_MODULE == LORA_MODULE_SX1268)
-    Serial.println("LoRa RA-01S SX1268 initialization...");
-    printLoRaConfig();
-  
-  #else
-    Serial.println("LoRa unknown module initialization...");
-    printLoRaConfig();
-  #endif
-
-  int state = RADIO_BEGIN(radio);
-
-  if (state == RADIOLIB_ERR_NONE) {
-    Serial.println(F("----- All set, waiting for incoming JSON payloads -----"));
-  } else {
-    Serial.print(F("LoRa init failed, code "));
-    Serial.println(state);
+  String radioError;
+  if (!radio.begin(settings, onReceive, radioError)) {
+    Serial.println(radioError);
     while (true) { delay(10); }
   }
 
-  SET_DIO_ACTION(radio, onReceive);
-  if (radio.startReceive(0) != RADIOLIB_ERR_NONE) {
+  printActiveConfig();
+
+  if (radio.startReceive() != RADIOLIB_ERR_NONE) {
     Serial.println(F("Failed to start non-blocking RX"));
+  } else {
+    Serial.println(F("----- All set, waiting for incoming JSON payloads -----"));
   }
 
+  Serial.println();
+  Serial.println("Web UI ready:");
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print("STA: http://");
+    Serial.println(WiFi.localIP());
+  }
+  if (accessPointActive) {
+    Serial.print("AP:  http://");
+    Serial.println(WiFi.softAPIP());
+  }
 }
 
+// Main loop: serve the web UI, process incoming radio/UART data, maintain connectivity, and send commands.
 void loop() {
-  // 1) Handle any ESP-NOW packets coming in over Serial1 (binary-safe, length-prefixed)
+  server.handleClient();
+  maybeReboot();
+
+  // ESP-NOW packets arrive over the secondary UART with a 2-byte length prefix from ESP2.
   if (Serial1.available() >= 2) {
-    // Read 2-byte little-endian length
     uint16_t L = 0;
-    if (Serial1.readBytes((char*)&L, 2) != 2) {
-      // couldn't read length cleanly
-    } else if (L > 0 && L <= 512) {
-      static uint8_t buf[512 + 1];   // +1 for NUL terminator when making a String
+    if (Serial1.readBytes(reinterpret_cast<char*>(&L), 2) == 2 && L > 0 && L <= 512) {
+      static uint8_t buf[513];
       size_t got = 0;
       unsigned long start = millis();
 
-      // Read exactly L bytes with a short timeout
       while (got < L && (millis() - start) < 100) {
-        got += Serial1.readBytes((char*)buf + got, L - got);
+        got += Serial1.readBytes(reinterpret_cast<char*>(buf) + got, L - got);
       }
+
       if (got == L) {
-        // Debug: show encrypted raw bytes
-        #if ROW_Debug
-        Serial.print("ESP-NOW Encrypted bytes: ");
-        for (size_t i = 0; i < L; i++) {
-          Serial.printf("%02X ", buf[i]);
+        if (settings.rowDebug) {
+          Serial.print("ESP-NOW Encrypted bytes: ");
+          for (size_t i = 0; i < L; i++) {
+            Serial.printf("%02X ", buf[i]);
+          }
+          Serial.println();
         }
-        Serial.println();
-        #endif
 
-        // Decrypt in-place if enabled
-        #if ESPNOW_Encryption
+        if (settings.espnowEncryption) {
           xorBuffer(buf, L);
-        #endif
+        }
 
-        // Build String from decrypted bytes (JSON, ASCII, no NULs expected)
-        buf[L] = 0;                      // NUL-terminate for safe String ctor
-        String serialrow = String((char*)buf);
-
-        // Parse & publish
-        parseIncomingPacket(serialrow);
-
-        Serial.print("ESP-NOW Message Received: ");
-        Serial.println(serialrow);
+        buf[L] = 0;
+        String serialrow = String(reinterpret_cast<char*>(buf));
+        parseIncomingPacket("ESP-NOW", serialrow);
+        StaticJsonDocument<64> preview;
+        if (!deserializeJson(preview, serialrow)) {
+          Serial.print("ESP-NOW Message Received: ");
+          Serial.println(serialrow);
+        } else {
+          Serial.println("ESP-NOW Message Received: [invalid json payload omitted]");
+        }
       } else {
-        // Incomplete frame: optional resync
         while (Serial1.available()) Serial1.read();
       }
     } else {
-      // Invalid length: optional resync
       while (Serial1.available()) Serial1.read();
     }
   }
 
-  // 2) Check for a completed LoRa packet
+  // LoRa packets are handled after the interrupt flag is raised, then the radio is re-armed for RX.
   if (packetReceived) {
     packetReceived = false;
 
@@ -619,64 +1124,57 @@ void loop() {
     if (len == 0 || len > sizeof(buf)) len = sizeof(buf);
 
     int16_t state = radio.readData(buf, len);
-    radio.startReceive(0);
+    radio.startReceive();
 
     if (state == RADIOLIB_ERR_NONE) {
       digitalWrite(LED_PIN, LOW);
       LedStartTime = millis();
 
-      // DEBUG: Dump LoRa raw encrypted bytes
-      #if ROW_Debug
-      Serial.print("LoRa Encrypted bytes: ");
-      for (size_t i = 0; i < len; i++) {
-        Serial.printf("%02X ", buf[i]);
+      if (settings.rowDebug) {
+        Serial.print("LoRa Encrypted bytes: ");
+        for (size_t i = 0; i < len; i++) {
+          Serial.printf("%02X ", buf[i]);
+        }
+        Serial.println();
       }
-      Serial.println();
-      #endif
 
-      #if LoRa_Encryption
+      if (settings.loraEncryption) {
         xorBuffer(buf, len);
-      #endif
+      }
 
-      String recv((char*)buf, len);
-
+      String recv(reinterpret_cast<char*>(buf), len);
       StaticJsonDocument<2048> rx;
       DeserializationError e = deserializeJson(rx, recv);
       if (!e) {
-        rx["r"] = radio.getRSSI();
-        ensureDiscoveryAndPublish(rx);
+        float packetRssi = radio.getRSSI();
+        rx["r"] = packetRssi;
+        String status;
+        String nodeId;
+        ensureDiscoveryAndPublish(rx, status, nodeId);
+        String logged;
+        serializeJson(rx, logged);
+        pushTrafficEntry("LoRa", logged, status, static_cast<int>(lround(packetRssi)), nodeId);
         Serial.print("LoRa Message Received: ");
         serializeJson(rx, Serial);
         Serial.println();
       } else {
         Serial.print("RX JSON parse error: ");
         Serial.println(e.f_str());
+        String logged = String("RX JSON parse error: ") + e.f_str();
+        pushTrafficEntry("LoRa", logged, "invalid_json", static_cast<int>(lround(radio.getRSSI())));
       }
-
     } else {
       Serial.print("readData() error ");
       Serial.println(state);
     }
   }
 
-  // 3) Turn off LED after 100 ms
   if (millis() - LedStartTime >= 100) {
     digitalWrite(LED_PIN, HIGH);
   }
 
-  // 4) Connectivity/MQTT
-  if (WiFi.status() != WL_CONNECTED) {
-    static unsigned long lastWifiTry = 0;
-    if (millis() - lastWifiTry > 5000) {
-      WiFi.reconnect();
-      lastWifiTry = millis();
-    }
-  }
-
-  if (!client.connected()) {
-    reconnect();
-  }
-
+  maintainWifi();
+  reconnectMqtt();
   client.loop();
   diag();
   SendESPNOWCommands();

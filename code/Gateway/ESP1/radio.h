@@ -1,107 +1,48 @@
-
 #pragma once
-#include <Arduino.h>   // for RISING (SX1276)
+
+#include <Arduino.h>
 #include <RadioLib.h>
-#include "config.h"
+#include "settings.h"
 
-#define LORA_MODULE_SX1262 1
-#define LORA_MODULE_SX1276 2
-#define LORA_MODULE_SX1268 3
+// Hardware pin map for the ESP32-C3 gateway board and LoRa module socket.
+#define CONFIG_MOSI 1
+#define CONFIG_MISO 0
+#define CONFIG_CLK  4
+#define CONFIG_NSS  3
+#define CONFIG_RST  6
+#define CONFIG_DIO0 5
+#define CONFIG_DIO1 5
+#define CONFIG_BUSY 10
 
-// ===== Per-module pin maps + glue macros =====
-#if (LORA_MODULE == LORA_MODULE_SX1276)
-// ---------- SX1276 (RA-01H): IRQ on DIO0, no BUSY ----------
-  #define RADIO_CLASS SX1276
+// RuntimeRadio hides the RadioLib differences between SX1276, SX1262, and SX1268.
+class RuntimeRadio {
+public:
+  RuntimeRadio() = default;
+  ~RuntimeRadio();
 
-  // SPI + control pins
-  #define CONFIG_MOSI 1
-  #define CONFIG_MISO 0
-  #define CONFIG_CLK  4
-  #define CONFIG_NSS  3
-  #define CONFIG_RST  6
-  #define CONFIG_DIO0 5
+  bool begin(const GatewaySettings& settings, void (*onReceive)(void), String& error);
+  bool armReceive(void (*onReceive)(void));
+  int16_t startReceive();
+  int16_t transmit(const uint8_t* data, size_t len);
+  int16_t transmit(const String& data);
+  int16_t readData(uint8_t* data, size_t len);
+  size_t getPacketLength(bool update = true);
+  float getRSSI();
+  void detachInterrupt();
 
-  // Glue for constructor/IRQs
-  #define CONFIG_IRQ   CONFIG_DIO0
-  #define CONFIG_BUSY  RADIOLIB_NC
+  const char* moduleLabel() const;
+  uint8_t moduleType() const;
 
-  // new Module(nss, dio0, rst, nc)
-  #define MODULE_ARGS  CONFIG_NSS, CONFIG_IRQ, CONFIG_RST, CONFIG_BUSY
+private:
+  void destroy();
+  bool attachReceiveCallback(void (*onReceive)(void));
+  int16_t beginConfiguredRadio(const GatewaySettings& settings);
 
-  // Hook IRQ to DIO0 (RadioLib 7.2.1 needs edge param on SX127x)
-  #define SET_DIO_ACTION(r, cb) (r).setDio0Action(cb, RISING)
-
-  // Detach the right IRQ line around TX
-  #define DETACH_IRQ() detachInterrupt(digitalPinToInterrupt(CONFIG_IRQ))
-
-  // SX1276 begin signature: last param = gain (0.0 = AGC)
-  #define RADIO_BEGIN(r) \
-    (r).begin(BAND, LORA_SIGNAL_BANDWIDTH, LORA_SPREADING_FACTOR, \
-              LORA_CODING_RATE, LORA_SYNC_WORD, LORA_TX_POWER, \
-              LORA_PREAMBLE_LENGTH, 0.0)
-
-#elif (LORA_MODULE == LORA_MODULE_SX1262)
-// ---------- SX1262: IRQ on DIO1, uses BUSY ----------
-  #define RADIO_CLASS SX1262
-
-  // SPI + control pins
-  #define CONFIG_MOSI 1
-  #define CONFIG_MISO 0
-  #define CONFIG_CLK  4
-  #define CONFIG_NSS  3
-  #define CONFIG_RST  6
-  #define CONFIG_DIO1 5
-  #define CONFIG_BUSY 10
-
-  // Glue for constructor/IRQs
-  #define CONFIG_IRQ   CONFIG_DIO1
-
-  // new Module(nss, dio1, rst, busy)
-  #define MODULE_ARGS  CONFIG_NSS, CONFIG_IRQ, CONFIG_RST, CONFIG_BUSY
-
-  // Hook IRQ to DIO1 (SX126x API takes only the callback)
-  #define SET_DIO_ACTION(r, cb) (r).setDio1Action(cb)
-
-  // Detach the right IRQ line around TX
-  #define DETACH_IRQ() detachInterrupt(digitalPinToInterrupt(CONFIG_IRQ))
-
-  // SX126x begin signature: (... preambleLen, tcxoVoltage, useRegulatorLDO)
-  #define RADIO_BEGIN(r) \
-    (r).begin(BAND, LORA_SIGNAL_BANDWIDTH, LORA_SPREADING_FACTOR, \
-              LORA_CODING_RATE, LORA_SYNC_WORD, LORA_TX_POWER, \
-              LORA_PREAMBLE_LENGTH, 0.0, false)
-
-#elif (LORA_MODULE == LORA_MODULE_SX1268)
-// ---------- SX1268: IRQ on DIO1, uses BUSY ----------
-  #define RADIO_CLASS SX1268
-
-  // SPI + control pins
-  #define CONFIG_MOSI 1
-  #define CONFIG_MISO 0
-  #define CONFIG_CLK  4
-  #define CONFIG_NSS  3
-  #define CONFIG_RST  6
-  #define CONFIG_DIO1 5
-  #define CONFIG_BUSY 10
-
-  // Glue for constructor/IRQs
-  #define CONFIG_IRQ   CONFIG_DIO1
-
-  // new Module(nss, dio1, rst, busy)
-  #define MODULE_ARGS  CONFIG_NSS, CONFIG_IRQ, CONFIG_RST, CONFIG_BUSY
-
-  // Hook IRQ to DIO1 (SX126x API takes only the callback)
-  #define SET_DIO_ACTION(r, cb) (r).setDio1Action(cb)
-
-  // Detach the right IRQ line around TX
-  #define DETACH_IRQ() detachInterrupt(digitalPinToInterrupt(CONFIG_IRQ))
-
-  // SX126x begin signature: (... preambleLen, tcxoVoltage, useRegulatorLDO)
-  #define RADIO_BEGIN(r) \
-    (r).begin(BAND, LORA_SIGNAL_BANDWIDTH, LORA_SPREADING_FACTOR, \
-              LORA_CODING_RATE, LORA_SYNC_WORD, LORA_TX_POWER, \
-              LORA_PREAMBLE_LENGTH, 0.0, false)
-
-#else
-  #error "LORA_MODULE not set to LORA_MODULE_SX1276, LORA_MODULE_SX1262 or LORA_MODULE_SX1268"
-#endif
+  Module* module_ = nullptr;
+  PhysicalLayer* radio_ = nullptr;
+  SX1276* sx1276_ = nullptr;
+  SX1262* sx1262_ = nullptr;
+  SX1268* sx1268_ = nullptr;
+  uint8_t moduleType_ = 0;
+  int8_t irqPin_ = -1;
+};
