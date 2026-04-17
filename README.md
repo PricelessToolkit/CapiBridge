@@ -7,13 +7,16 @@
 
 CapiBridge is an open-source one-way gateway for low-power devices. It supports various communication technologies, including LoRa, ESP-NOW, and WiFi. The gateway receives JSON strings from LoRa and ESP-NOW DIY devices and publishes them to an MQTT server. It automatically separates the JSON string into dynamic MQTT topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all your DIY projects, focusing on simplicity and unified protocol handling.
 
+### 🚀 NEW WebUI for Configuration and Monitoring
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/webui/webui.png"/>
+
 [<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/video.jpg"/>](https://www.youtube.com/watch?v=mJt_VbMeRAU)
 
 ____________
 
 ## 🛒 Where to buy http://www.PricelessToolkit.com
 
-## 🚀 Sensors that work out of the box with CapiBridge.
+### Sensors that work out of the box with CapiBridge.
  - [PirBOX-LITE](https://github.com/PricelessToolkit/PirBOX-LITE) LoRa Long-Range Motion Sensor for Mailbox/Garage.....
  - [PirBOX-MAX](https://github.com/PricelessToolkit/PirBOX-MAX) LoRa Long-Range 2-Way Motion Sensor with reed switch inputs and relays
  - [SOILSENS-V5W](https://github.com/PricelessToolkit/SOILSENS-V5W) Soil Moisture Sensor
@@ -45,50 +48,14 @@ ____________
 
 
 ## 📣 Updates, Bugfixes, and Breaking Changes
+- 17.04.2026
+  - WebUI for configuration and monitoring.
 - 28.03.2026
   - Added support for "Ra-01S" 433Mhz Module.
   - `#define LORA_MODULE LORA_MODULE_SX1268    // Ra-01S 433Mhz Module "433Mhz Version" Module CapiBridge v2`
-- 25.08.2025 - Breaking Change (XOR obfuscation "Encryption" for ESP-NOW).
-  - Possibility to Enable/Disable Encryption separately for LoRa and ESP-NOW
-  - [2-way communication,](https://github.com/PricelessToolkit/CapiBridge/tree/main?tab=readme-ov-file#-2-way-communication--sending-commands) For LoRa and ESP-NOW
-- 18.08.2025 - Hardware modification, The new LoRa module RA-01SH "SX1262"
-  - Added option to select LoRA module type via config.
-```c
-     //#define LORA_MODULE LORA_MODULE_SX1276  // SX1276 Module (orders shipped before Aug 2025)
-   #define LORA_MODULE LORA_MODULE_SX1262  // SX1262 Module CapiBridge v2 (orders shipped after Aug 2025)
-```
-- 22.05.2025 - Breaking Change (XOR obfuscation "Encryption" for LoRa).
-- - All LoRa sensors' firmware needs to be updated.
-- 14.05.2025 - [2-way communication,](https://github.com/PricelessToolkit/CapiBridge/tree/main?tab=readme-ov-file#-2-way-communication--sending-commands) for now only "LoRa".
-- 02.03.2025 - ESP-NOW "ESP2" Serial outputs incorrect MAC address "00:00:00..."
-- 25.11.2024 - Button autodiscovery topic.
-- 28.07.2024 - Binary sensors topics and Motion sensor autodiscovery.
-- 15.06.2024 - Publishing battery in percent.
-
-> [!NOTE]
->  If you're ready to contribute to the project, your support would be greatly appreciated. Due to time constraints, I may not be able to quickly verify new "features" or completely new "code" functionality, so please create a new code/script in the new folder.
-____________
-
-# Do you want to assemble it yourself?
-This project is open-source, allowing you to assemble CapiBridge on your own. To simplify this process, I've provided an "Interactive HTML Boom File" located in the PCB folder. This interactive file helps you identify where to solder each component and polarity, reducing the chances of errors to a minimum. But if you don't feel confident in assembling it yourself, you can always opt to purchase a pre-assembled board from my Shop https://www.pricelesstoolkit.com
-
-## Schematic
-<details>
-  <summary>View schematic. Click here</summary>
-<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/V1_SX1276/capibridge_schematic.jpg"/>
- <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/V2_SX1262/capibridge_schematic_v2_SH.jpg"/>
-</details>
 
 ____________
 
-  Links for antennas and cables.
-
- - 2.4Ghz Antenna + Cable https://s.click.aliexpress.com/e/_DE0sJ7N
- - Cable UFL to SMA https://s.click.aliexpress.com/e/_Dnee0tV
- - Antenna 433 MHz SMA male https://s.click.aliexpress.com/e/_Dm2X9vv
- - Antenna 868 MHz SMA male https://s.click.aliexpress.com/e/_Dczm4y7
-
-____________
 
 ## Before you start
 <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/3D_open3.JPG"/>
@@ -133,7 +100,33 @@ ____________
 
 > [!NOTE]
 > For `ESP1.ino`
-> All configurations are done in the file `config.h`
+> Initial configurations are done in the file `config.h` and the rest in WebUI.
+
+
+#### Initial Configuration
+
+```cpp
+///////////////////////////////////////////////////////////////////////////////
+
+//#define LORA_MODULE LORA_MODULE_SX1276    // Ra-01 433 Ra-01H 868/915Mhz "SX1276" Module (orders shipped before Aug 2025)
+#define LORA_MODULE LORA_MODULE_SX1262      // Ra-01SH 868/915Mhz "SX1262"  Module CapiBridge v2
+//#define LORA_MODULE LORA_MODULE_SX1268    // Ra-01S 433Mhz Module "433Mhz Version" Module CapiBridge v2
+
+#define BAND 868.0                          // 433.0 / 868.0 / 915.0
+
+#define WEBUI_PASSWORD "password"           // Web UI password protection
+#define WEBUI_USERNAME "admin"              // Login for the Web UI
+
+#define WIFI_SSID "Your-WIFI-Name"
+#define WIFI_PASSWORD "WIFI-Password"
+
+//////////////////////////////////////////////////////////////////////////////
+
+
+```
+> [!NOTE]
+> After uploading the code, open the Configuration webpage http://YOUR-CAPIBRIDGE-IP
+> and configure the rest.
 
 
 #### Gateway Separation and Encryption Keys
@@ -142,14 +135,8 @@ ____________
 > Unique `GATEWAY_KEY` within the JSON to differentiate your data from others, and `encryption_key` to globally encrypt the payload. Must match the key in Nodes/Sensors.
 > 
 
-```cpp
-#define GATEWAY_KEY "xy"                           // Separation Key "Keep it small" Must match exactly sensors key
-#define LoRa_Encryption true                       // Global LoRa Encryption, true or false
-#define ESPNOW_Encryption false                    // Global ESP-NOW Encryption, true or false
-#define encryption_key_length 4                    // must match number of bytes in the XOR key array
-#define encryption_key { 0x4B, 0xA3, 0x3F, 0x9C }  // Multi-byte XOR key (2–16 bytes)
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/webui/gateway.png"/>
 
-```
 #### 🔐 How to Create Your `encryption_key` Using a Calculator
 
 1. **Choose a few numbers between `1` and `255`**  
@@ -165,73 +152,31 @@ ____________
    - Switch to **HEX mode**
    - You’ll see the result (e.g., `0x05`)
 
-4. **Use the converted HEX values in your config:**
+4. **Use the converted HEX values in WEBUI:**
 
-```cpp
-#define encryption_key { 0x05, ...., ...., .... }
-#define encryption_key_length 4
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/webui/encryption.png"/>
 
-```
 
-#### Select the LoRa module that CapiBridge uses.
-
-```cpp
-
-//#define LORA_MODULE LORA_MODULE_SX1276  // SX1276 Module (orders shipped before Aug 2025)
-#define LORA_MODULE LORA_MODULE_SX1262  // SX1262 Module CapiBridge v2 (orders shipped after Aug 2025)
-
-```
 
 
 #### WIFI Configuration
 
-```cpp
-#define WIFI_SSID ""
-#define WIFI_PASSWORD ""
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/webui/wifi.png"/>
 
-```
 #### MQTT Server Configuration
 
-```cpp
-#define MQTT_USERNAME ""
-#define MQTT_PASSWORD ""
-#define MQTT_SERVER ""
-#define MQTT_PORT 1883
-#define DISCOVERY_EVERY_PACKET true      // true  = publish discovery every time data is received from that sensor
-                                         // false = publish discovery once per CapiBridge boot (remembers if that sensor is already published)
-                                         // Using false reduces MQTT traffic, but if you delete a sensor in Home Assistant,
-                                         // you must reboot CapiBridge to clear the cache so it can rediscover that sensor
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/webui/mqtt.png"/>
 
-```
 #### LoRa Configuration
 
 > [!IMPORTANT]
 > LoRa configuration must match the configuration in Nodes/Sensors.
 
-```cpp
-
-#define BAND 868.0                       // 433.0 / 868.0 / 915.0
-#define LORA_TX_POWER 20                 // dBm; check regulatory limits in your region (SX1262 supports up to 22) (SX1276 supports up to 20)
-
-/// Bandwidth vs SF support (SX126x):
-// 125 kHz: SF5–SF9
-// 250 kHz: SF5–SF10
-// 500 kHz: SF5–SF11
-
-#define LORA_SIGNAL_BANDWIDTH 250.0     // kHz: 125.0, 250.0, 500.0
-#define LORA_SPREADING_FACTOR 10        // "5–11 on SX1262" "6-12 on SX1276"
-#define LORA_CODING_RATE 5              // 5–8 → coding rate 4/5 .. 4/8
-#define LORA_SYNC_WORD 0x12             // Default 0x12 Dont Change
-#define LORA_PREAMBLE_LENGTH 12         // 6..65535
-
-```
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/webui/lora.png"/>
 
 > [!IMPORTANT]
 > For optimizing the `SPREADING_FACTOR` (SF) in your network, it's crucial not to default to SF11, aiming for maximum distance without considering its downsides. SF11, while extending range, significantly slows down data transmission. For example, if your furthest sensor is only 100 meters away, opting for SF7 is more efficient. SF7 is faster, consuming less power compared to SF11. Therefore, it's essential to choose the SF wisely based on your specific needs and understand the trade-offs. Avoid setting SF11 by default without assessing the impact on speed, power consumption, and time on air (ToA) for others.
 
-```cpp
-#define ROW_Debug false  // true or false, Prints ROW hex values instead of JSON
-```
 ____________
 
 ## ESP2.ino sketch configuration
@@ -551,6 +496,28 @@ cards:
 
 > [!NOTE]
 > Please note that when sending a JSON payload from the HA dashboard, the payload needs to be slightly changed; you need to put the payload into "" and add \ before every ". For example `"{\"k\":\"xy\",\"id\":\"PirBoxM\",\"rm\":\"lora\",\"com\":\"11\"}"`
+
+
+# Do you want to assemble it yourself?
+This project is open-source, allowing you to assemble CapiBridge on your own. To simplify this process, I've provided an "Interactive HTML Boom File" located in the PCB folder. This interactive file helps you identify where to solder each component and polarity, reducing the chances of errors to a minimum. But if you don't feel confident in assembling it yourself, you can always opt to purchase a pre-assembled board from my Shop https://www.pricelesstoolkit.com
+
+## Schematic
+<details>
+  <summary>View schematic. Click here</summary>
+<img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/V1_SX1276/capibridge_schematic.jpg"/>
+ <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/PCB/V2_SX1262/capibridge_schematic_v2_SH.jpg"/>
+</details>
+
+____________
+
+  Links for antennas and cables.
+
+ - 2.4Ghz Antenna + Cable https://s.click.aliexpress.com/e/_DE0sJ7N
+ - Cable UFL to SMA https://s.click.aliexpress.com/e/_Dnee0tV
+ - Antenna 433 MHz SMA male https://s.click.aliexpress.com/e/_Dm2X9vv
+ - Antenna 868 MHz SMA male https://s.click.aliexpress.com/e/_Dczm4y7
+
+____________
 
 
 ## Troubleshooting
