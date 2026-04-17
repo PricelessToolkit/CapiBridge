@@ -141,11 +141,14 @@ ____________
 <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/swich.jpg"/>
 
 6. Open ESP2.ino sketch.
-7. Click Upload.
-8. Set the UART switch back to the ESP1 position to see received JSON messages.
+
+> [!NOTE]
+> ESP2 for `ESPNOW` requires no initial setup. Once the sketch is uploaded, it automatically prints the MAC address in the serial monitor for integration with ESPNOW nodes/sensors.
+
+8. Click Upload.
+9. Set the UART switch back to the ESP1 position to see received JSON messages.
 
 Everything will be ready shortly; the CapiBridge RSSI entity should appear in the Home Assistant MQTT devices list within a minute or two.
-____________
 
 
 > [!NOTE]
@@ -203,10 +206,6 @@ ____________
 
 ____________
 
-## ESP2.ino sketch configuration
-> [!NOTE]
-> ESP2 for `ESPNOW` requires no initial setup. Once the sketch is uploaded, it automatically prints the MAC address in the serial monitor for integration with ESPNOW nodes/sensors.
-____________
 
 ## Home Assistant Zero Configuration
 > [!NOTE]
