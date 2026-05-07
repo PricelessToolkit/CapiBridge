@@ -14,8 +14,7 @@ if ! command -v op >/dev/null 2>&1; then
 fi
 
 if ! op whoami >/dev/null 2>&1; then
-  echo "error: not signed in to 1Password. run: eval \$(op signin)" >&2
-  exit 1
+  eval "$(op signin)"
 fi
 
 if [[ ! -f "$TPL" ]]; then
