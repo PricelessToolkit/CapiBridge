@@ -1,0 +1,11 @@
+# Rendered config — generated from config.h.tpl via `./render-config.sh`.
+# Contains plaintext secrets; never commit.
+code/Gateway/*/config.h
+
+# Flash dumps — contain plaintext secrets recovered from device.
+*_dump.bin
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/

@@ -1,17 +1,21 @@
+// Template — rendered to config.h by `./render-config.sh` (uses 1Password CLI).
+// Secret values are referenced via op:// URIs; non-secret tunables stay inline.
+// Never commit the rendered config.h (it contains plaintext secrets).
+
 /////////////////////////// LoRa/ESPNow Gateway Key ///////////////////////////
 
-#define GATEWAY_KEY "xy" // Keep it small
+#define GATEWAY_KEY "{{ op://CapiBridge/config/gateway_key }}" // Keep it small
 
 ///////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////// WIFI / MQTT ////////////////////////////////////
 
-#define WIFI_SSID "your_wifi_ssid"
-#define WIFI_PASSWORD "your_wifi_passwd"
-#define MQTT_USERNAME "your_mqtt_user"
-#define MQTT_PASSWORD "your_mqtt_passwd"
-#define MQTT_SERVER "your_mqtt_broker_address"
-#define MQTT_PORT 1883
+#define WIFI_SSID "{{ op://CapiBridge/config/wifi_ssid }}"
+#define WIFI_PASSWORD "{{ op://CapiBridge/config/wifi_password }}"
+#define MQTT_USERNAME "{{ op://CapiBridge/config/mqtt_username }}"
+#define MQTT_PASSWORD "{{ op://CapiBridge/config/mqtt_password }}"
+#define MQTT_SERVER "{{ op://CapiBridge/config/mqtt_server }}"
+#define MQTT_PORT {{ op://CapiBridge/config/mqtt_port }}
 
 ///////////////////////////////////////////////////////////////////////////////
 
