@@ -1,5 +1,5 @@
 // Template — rendered to config.h by `./render-config.sh` (uses 1Password CLI).
-// Secret values are referenced via op:// URIs; non-secret tunables stay inline.
+// Secret values reference 1Password items; non-secret tunables stay inline.
 // Never commit the rendered config.h (it contains plaintext secrets).
 
 /////////////////////////// LoRa/ESPNow Gateway Key ///////////////////////////
