@@ -19,7 +19,7 @@
 ____________
 
 
-CapiBridge is an open-source Two-Way gateway for low-power devices. It supports various communication technologies, including LoRa, ESP-NOW, and WiFi. The gateway receives JSON strings from LoRa and ESP-NOW DIY devices and publishes them to an MQTT server. It automatically separates the JSON string into dynamic MQTT topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all your DIY projects, focusing on simplicity and unified protocol handling.
+CapiBridge is an open-source Two-Way gateway for low-power devices. It supports various communication technologies, including LoRa, ESP-NOW, and WiFi. The gateway receives JSON strings from LoRa and ESP-NOW Sensors or DIY devices and publishes them to an MQTT server. It automatically separates the JSON string into dynamic MQTT topics based on keys within the JSON, such as "b" for battery or "m" for motion, making it highly compatible with Home Assistant. This gateway simplifies adding new DIY nodes/sensors to your smart home by standardizing the communication protocol across all your DIY projects, focusing on simplicity and unified protocol handling.
 
 ### 🚀 NEW WebUI for Configuration and Monitoring
 <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/webui/webui.png"/>
