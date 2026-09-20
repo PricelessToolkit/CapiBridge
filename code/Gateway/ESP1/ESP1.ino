@@ -741,26 +741,26 @@ void publishGatewayDiscovery() {
 
   publishGatewayDiscoveryEntity(
     "sensor",
-    "wifi_ssid",
-    "WiFi SSID",
+    "ssid",
+    "SSID",
     "",
     "",
     "diagnostic",
     "",
     "mdi:wifi",
-    "{{ value_json.wifi_ssid }}"
+    "{{ value_json.ssid }}"
   );
 
   publishGatewayDiscoveryEntity(
     "sensor",
-    "wifi_rssi",
-    "WiFi RSSI",
+    "rssi",
+    "RSSI",
     "signal_strength",
     "measurement",
     "diagnostic",
     "dBm",
     "mdi:wifi",
-    "{{ value_json.wifi_rssi }}"
+    "{{ value_json.rssi }}"
   );
 
   publishGatewayDiscoveryEntity(
@@ -931,8 +931,8 @@ void publishGatewayState() {
   DynamicJsonDocument state(1024);
 
   state["ip_address"] = WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString() : "";
-  state["wifi_ssid"] = WiFi.status() == WL_CONNECTED ? String(WiFi.SSID()) : "";
-  state["wifi_rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
+  state["ssid"] = WiFi.status() == WL_CONNECTED ? String(WiFi.SSID()) : "";
+  state["rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
   state["firmware_version"] = FIRMWARE_VERSION;
   state["reset_reason"] = getResetReasonString();
   state["uptime"] = millis() / 1000;
@@ -942,13 +942,14 @@ void publishGatewayState() {
   state["lora_packets_received"] = gatewayLoraPacketsReceived;
   state["lora_errors"] = gatewayLoraErrors;
 
-  unsigned long ageSec = 0;
+  // Publish last-packet fields only after a packet has actually arrived, so a fresh boot
+  // does not report a phantom packet (age 0, 0 dBm) before the first reception. The matching
+  // entities render "unknown" in Home Assistant while these keys are absent.
   if (gatewayLastPacketMs > 0) {
-    ageSec = (millis() - gatewayLastPacketMs) / 1000;
+    state["last_packet_age"] = (millis() - gatewayLastPacketMs) / 1000;
+    state["last_packet_rssi"] = static_cast<int>(lround(gatewayLastRssi));
+    state["last_packet_snr"] = roundf(gatewayLastSnr * 10.0f) / 10.0f;
   }
-  state["last_packet_age"] = ageSec;
-  state["last_packet_rssi"] = static_cast<int>(lround(gatewayLastRssi));
-  state["last_packet_snr"] = fmtFloat(gatewayLastSnr, 1);
   state["radio_mode"] = radio.getOperatingMode();
   state["radio_errors"] = radio.getDeviceErrors();
 
