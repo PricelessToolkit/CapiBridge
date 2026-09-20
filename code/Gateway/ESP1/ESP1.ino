@@ -73,7 +73,6 @@ void onReceive() { packetReceived = true; }
 #define BINARY_SENSOR_TOPIC "homeassistant/binary_sensor/"
 #define SENSOR_TOPIC "homeassistant/sensor/"
 #define CAPIBRIDGE_LWT_TOPIC "capibridge/availability"
-#define CAPIBRIDGE_RSSI_TOPIC "homeassistant/sensor/CapiBridge/rssi"
 #define CAPIBRIDGE_COMMAND_TOPIC "homeassistant/sensor/CapiBridge/command"
 #define AVAIL_ON  "online"
 #define AVAIL_OFF "offline"
@@ -131,6 +130,12 @@ unsigned long lastDiagTimer = 0;
 unsigned long lastWifiTry = 0;
 unsigned long lastMqttAttempt = 0;
 unsigned long rebootAt = 0;
+
+unsigned long gatewayLoraPacketsReceived = 0;
+unsigned long gatewayLoraErrors = 0;
+unsigned long gatewayLastPacketMs = 0;
+float gatewayLastRssi = 0.0f;
+float gatewayLastSnr = 0.0f;
 
 static constexpr size_t MAX_TRAFFIC_LOG = 30;
 static constexpr size_t MAX_WORKING_NODES = 48;
@@ -407,6 +412,7 @@ void reconnectMqtt() {
     Serial.println("MQTT connected");
     client.subscribe(CAPIBRIDGE_COMMAND_TOPIC);
     client.publish(CAPIBRIDGE_LWT_TOPIC, AVAIL_ON, true);
+    publishGatewayDiscovery();
   } else {
     Serial.print("MQTT failed, rc=");
     Serial.println(client.state());
@@ -602,40 +608,353 @@ void parseIncomingPacket(const String& source, const String& serialrow, int rssi
   pushTrafficEntry(source, serialrow, status, rssi, nodeId);
 }
 
-// Periodically publish the gateway WiFi RSSI as a diagnostic entity for Home Assistant.
+// Periodically publish the gateway diagnostics state to Home Assistant. The WiFi RSSI is one
+// of the entities on the CapiBridge Gateway device, published by publishGatewayState().
 void diag() {
   if (!client.connected()) {
     return;
   }
 
   if (millis() - lastDiagTimer >= diagTimer) {
-    long rssi = WiFi.isConnected() ? WiFi.RSSI() : 0;
-
-    static bool diagDiscoverySent = false;
-    if (!diagDiscoverySent) {
-      StaticJsonDocument<384> cfg;
-      cfg["name"] = "RSSI";
-      cfg["unit_of_measurement"] = "dBm";
-      cfg["device_class"] = "signal_strength";
-      cfg["icon"] = "mdi:signal";
-      cfg["entity_category"] = "diagnostic";
-      cfg["state_topic"] = CAPIBRIDGE_RSSI_TOPIC;
-      cfg["unique_id"] = "capibridge_rssi";
-      JsonObject dev = cfg.createNestedObject("device");
-      JsonArray identifiers = dev.createNestedArray("identifiers");
-      identifiers.add("capibridge");
-      dev["name"] = "CapiBridge";
-      dev["model"] = "CapiBridge";
-      dev["manufacturer"] = "PricelessToolkit";
-      String payload;
-      serializeJson(cfg, payload);
-      client.publish((String(CAPIBRIDGE_RSSI_TOPIC) + "/config").c_str(), payload.c_str(), MQTT_RETAIN);
-      diagDiscoverySent = true;
-    }
-
-    client.publish(CAPIBRIDGE_RSSI_TOPIC, String(rssi).c_str(), MQTT_RETAIN);
+    publishGatewayState();
     lastDiagTimer = millis();
   }
+}
+
+String getGatewayMacId() {
+  uint64_t mac = ESP.getEfuseMac();
+  char macStr[13];
+  snprintf(
+    macStr,
+    sizeof(macStr),
+    "%02X%02X%02X%02X%02X%02X",
+    static_cast<uint8_t>(mac >> 40),
+    static_cast<uint8_t>(mac >> 32),
+    static_cast<uint8_t>(mac >> 24),
+    static_cast<uint8_t>(mac >> 16),
+    static_cast<uint8_t>(mac >> 8),
+    static_cast<uint8_t>(mac)
+  );
+  return String(macStr);
+}
+
+String getResetReasonString() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON:
+      return "Power On";
+    case ESP_RST_SW:
+      return "Software Reset";
+    case ESP_RST_PANIC:
+      return "Exception/Panic";
+    case ESP_RST_INT_WDT:
+      return "Interrupt Watchdog";
+    case ESP_RST_TASK_WDT:
+      return "Task Watchdog";
+    case ESP_RST_WDT:
+      return "Other Watchdog";
+    case ESP_RST_DEEPSLEEP:
+      return "Deep Sleep Wake";
+    case ESP_RST_BROWNOUT:
+      return "Brownout";
+    case ESP_RST_SDIO:
+      return "SDIO";
+    default:
+      return "Unknown";
+  }
+}
+
+void publishGatewayDiscoveryEntity(
+  const String& component,
+  const String& objectId,
+  const String& name,
+  const String& deviceClass,
+  const String& stateClass,
+  const String& entityCategory,
+  const String& unit,
+  const String& icon,
+  const String& valueTemplate
+) {
+  String macId = getGatewayMacId();
+  String configTopic = String("homeassistant/") + component + "/capibridge_" + objectId + "/config";
+  String stateTopic = "homeassistant/sensor/capibridge/state";
+
+  DynamicJsonDocument cfg(768);
+  cfg["name"] = name;
+  cfg["object_id"] = String("capibridge_") + objectId;
+  cfg["unique_id"] = String("capibridge_") + macId + "_" + objectId;
+  cfg["state_topic"] = stateTopic;
+  cfg["value_template"] = valueTemplate;
+  cfg["availability_topic"] = CAPIBRIDGE_LWT_TOPIC;
+  cfg["payload_available"] = AVAIL_ON;
+  cfg["payload_not_available"] = AVAIL_OFF;
+
+  if (deviceClass.length() > 0) {
+    cfg["device_class"] = deviceClass;
+  }
+  if (stateClass.length() > 0) {
+    cfg["state_class"] = stateClass;
+  }
+  if (entityCategory.length() > 0) {
+    cfg["entity_category"] = entityCategory;
+  }
+  if (unit.length() > 0) {
+    cfg["unit_of_measurement"] = unit;
+  }
+  if (icon.length() > 0) {
+    cfg["icon"] = icon;
+  }
+
+  JsonObject dev = cfg.createNestedObject("device");
+  JsonArray identifiers = dev.createNestedArray("identifiers");
+  identifiers.add("capibridge");
+  dev["name"] = "CapiBridge";
+  dev["model"] = "CapiBridge v2";
+  dev["manufacturer"] = "PricelessToolkit";
+  dev["sw_version"] = FIRMWARE_VERSION;
+
+  String payload;
+  serializeJson(cfg, payload);
+  client.publish(configTopic.c_str(), payload.c_str(), MQTT_RETAIN);
+}
+
+void publishGatewayDiscovery() {
+  if (!client.connected()) {
+    return;
+  }
+
+  static bool gatewayDiscoverySent = false;
+  if (gatewayDiscoverySent) {
+    return;
+  }
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "ip_address",
+    "IP Address",
+    "",
+    "",
+    "diagnostic",
+    "",
+    "mdi:ip-network",
+    "{{ value_json.ip_address }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "wifi_ssid",
+    "WiFi SSID",
+    "",
+    "",
+    "diagnostic",
+    "",
+    "mdi:wifi",
+    "{{ value_json.wifi_ssid }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "wifi_rssi",
+    "WiFi RSSI",
+    "signal_strength",
+    "measurement",
+    "diagnostic",
+    "dBm",
+    "mdi:wifi",
+    "{{ value_json.wifi_rssi }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "firmware_version",
+    "Firmware Version",
+    "",
+    "",
+    "diagnostic",
+    "",
+    "mdi:chip",
+    "{{ value_json.firmware_version }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "reset_reason",
+    "Reset Reason",
+    "",
+    "",
+    "diagnostic",
+    "",
+    "mdi:restart",
+    "{{ value_json.reset_reason }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "uptime",
+    "Uptime",
+    "duration",
+    "",
+    "diagnostic",
+    "s",
+    "mdi:timer-outline",
+    "{{ value_json.uptime }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "free_heap",
+    "Free Heap",
+    "",
+    "",
+    "diagnostic",
+    "B",
+    "mdi:memory",
+    "{{ value_json.free_heap }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "min_free_heap",
+    "Min Free Heap",
+    "",
+    "",
+    "diagnostic",
+    "B",
+    "mdi:memory",
+    "{{ value_json.min_free_heap }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "cpu_temp",
+    "CPU Temperature",
+    "temperature",
+    "measurement",
+    "diagnostic",
+    "°C",
+    "mdi:thermometer",
+    "{{ value_json.cpu_temp }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "lora_packets_received",
+    "LoRa Packets Received",
+    "",
+    "total_increasing",
+    "",
+    "",
+    "mdi:counter",
+    "{{ value_json.lora_packets_received }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "lora_errors",
+    "LoRa Errors",
+    "",
+    "total_increasing",
+    "",
+    "",
+    "mdi:alert-circle",
+    "{{ value_json.lora_errors }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "last_packet_age",
+    "Last Packet Age",
+    "",
+    "",
+    "",
+    "s",
+    "mdi:clock-outline",
+    "{{ value_json.last_packet_age }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "last_packet_rssi",
+    "Last Packet RSSI",
+    "signal_strength",
+    "measurement",
+    "",
+    "dBm",
+    "mdi:signal",
+    "{{ value_json.last_packet_rssi }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "last_packet_snr",
+    "Last Packet SNR",
+    "",
+    "measurement",
+    "",
+    "dB",
+    "mdi:signal-variant",
+    "{{ value_json.last_packet_snr }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "radio_mode",
+    "Radio Mode",
+    "",
+    "",
+    "diagnostic",
+    "",
+    "mdi:radio-tower",
+    "{{ value_json.radio_mode }}"
+  );
+
+  publishGatewayDiscoveryEntity(
+    "sensor",
+    "radio_errors",
+    "Radio Errors",
+    "",
+    "",
+    "diagnostic",
+    "",
+    "mdi:alert-circle-outline",
+    "{{ value_json.radio_errors }}"
+  );
+
+  gatewayDiscoverySent = true;
+  Serial.println("Gateway MQTT discovery published");
+}
+
+void publishGatewayState() {
+  if (!client.connected()) {
+    return;
+  }
+
+  DynamicJsonDocument state(1024);
+
+  state["ip_address"] = WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString() : "";
+  state["wifi_ssid"] = WiFi.status() == WL_CONNECTED ? String(WiFi.SSID()) : "";
+  state["wifi_rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
+  state["firmware_version"] = FIRMWARE_VERSION;
+  state["reset_reason"] = getResetReasonString();
+  state["uptime"] = millis() / 1000;
+  state["free_heap"] = ESP.getFreeHeap();
+  state["min_free_heap"] = ESP.getMinFreeHeap();
+  state["cpu_temp"] = static_cast<int>(temperatureRead());
+  state["lora_packets_received"] = gatewayLoraPacketsReceived;
+  state["lora_errors"] = gatewayLoraErrors;
+
+  unsigned long ageSec = 0;
+  if (gatewayLastPacketMs > 0) {
+    ageSec = (millis() - gatewayLastPacketMs) / 1000;
+  }
+  state["last_packet_age"] = ageSec;
+  state["last_packet_rssi"] = static_cast<int>(lround(gatewayLastRssi));
+  state["last_packet_snr"] = fmtFloat(gatewayLastSnr, 1);
+  state["radio_mode"] = radio.getOperatingMode();
+  state["radio_errors"] = radio.getDeviceErrors();
+
+  String payload;
+  serializeJson(state, payload);
+  client.publish("homeassistant/sensor/capibridge/state", payload.c_str(), MQTT_RETAIN);
 }
 
 // Forward MQTT command payloads out over LoRa after removing the transport selector field.
@@ -1147,6 +1466,7 @@ void loop() {
       DeserializationError e = deserializeJson(rx, recv);
       if (!e) {
         float packetRssi = radio.getRSSI();
+        float packetSnr = radio.getSNR();
         rx["r"] = packetRssi;
         String status;
         String nodeId;
@@ -1157,15 +1477,22 @@ void loop() {
         Serial.print("LoRa Message Received: ");
         serializeJson(rx, Serial);
         Serial.println();
+
+        gatewayLoraPacketsReceived++;
+        gatewayLastPacketMs = millis();
+        gatewayLastRssi = packetRssi;
+        gatewayLastSnr = packetSnr;
       } else {
         Serial.print("RX JSON parse error: ");
         Serial.println(e.f_str());
         String logged = String("RX JSON parse error: ") + e.f_str();
         pushTrafficEntry("LoRa", logged, "invalid_json", static_cast<int>(lround(radio.getRSSI())));
+        gatewayLoraErrors++;
       }
     } else {
       Serial.print("readData() error ");
       Serial.println(state);
+      gatewayLoraErrors++;
     }
   }
 

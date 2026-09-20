@@ -25,11 +25,11 @@ bool RuntimeRadio::begin(const GatewaySettings& settings, void (*onReceive)(void
       radio_ = sx1276_;
       break;
     case LORA_MODULE_SX1262:
-      sx1262_ = new SX1262(module_);
+      sx1262_ = new CapiSX1262(module_);
       radio_ = sx1262_;
       break;
     case LORA_MODULE_SX1268:
-      sx1268_ = new SX1268(module_);
+      sx1268_ = new CapiSX1268(module_);
       radio_ = sx1268_;
       break;
     default:
@@ -169,6 +169,70 @@ float RuntimeRadio::getRSSI() {
     return 0.0f;
   }
   return radio_->getRSSI();
+}
+
+float RuntimeRadio::getSNR() {
+  if (radio_ == nullptr) {
+    return 0.0f;
+  }
+  return radio_->getSNR();
+}
+
+// Decode the SX126x GetStatus byte into a chip-mode label. Unrecognized modes carry the raw
+// hex value so an unexpected status can be read directly instead of guessed at.
+static String decodeSX126xMode(uint8_t status) {
+  if (status == 0xFF) {
+    return "SPI_FAILED";
+  }
+  uint8_t mode = status & 0b01110000;
+  switch (mode) {
+    case 0b00100000:
+      return "STDBY_RC";
+    case 0b00110000:
+      return "STDBY_XOSC";
+    case 0b01000000:
+      return "FS";
+    case 0b01010000:
+      return "RX";
+    case 0b01100000:
+      return "TX";
+    default:
+      char buf[16];
+      snprintf(buf, sizeof(buf), "unknown(0x%02X)", status);
+      return String(buf);
+  }
+}
+
+String RuntimeRadio::getOperatingMode() {
+  if (radio_ == nullptr) {
+    return "no_radio";
+  }
+
+  if (moduleType_ == LORA_MODULE_SX1276) {
+    return "unsupported";
+  }
+
+  if (moduleType_ == LORA_MODULE_SX1262 && sx1262_ != nullptr) {
+    return decodeSX126xMode(sx1262_->exposedStatus());
+  }
+
+  if (moduleType_ == LORA_MODULE_SX1268 && sx1268_ != nullptr) {
+    return decodeSX126xMode(sx1268_->exposedStatus());
+  }
+
+  return "unknown";
+}
+
+uint16_t RuntimeRadio::getDeviceErrors() {
+  if (moduleType_ == LORA_MODULE_SX1262 && sx1262_ != nullptr) {
+    return sx1262_->exposedDeviceErrors();
+  }
+
+  if (moduleType_ == LORA_MODULE_SX1268 && sx1268_ != nullptr) {
+    return sx1268_->exposedDeviceErrors();
+  }
+
+  return 0;
 }
 
 void RuntimeRadio::detachInterrupt() {
