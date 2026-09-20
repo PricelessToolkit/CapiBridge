@@ -10,6 +10,7 @@
 #include <vector>
 #include <math.h>
 #include <stdarg.h>
+#include <esp_timer.h>
 
 // Mirror the hardware serial output into an in-memory log so the web UI can show a live Raw View terminal.
 class MirroredSerial : public Print {
@@ -727,6 +728,11 @@ void publishGatewayDiscovery() {
     return;
   }
 
+  // Delete the standalone RSSI entity earlier firmware published under a node-scoped topic.
+  // The WiFi RSSI now lives on the shared gateway state, so this clears the orphaned retained
+  // config on the broker; without it an upgraded gateway shows a dead duplicate RSSI entity.
+  client.publish("homeassistant/sensor/CapiBridge/rssi/config", "", MQTT_RETAIN);
+
   publishGatewayDiscoveryEntity(
     "sensor",
     "ip_address",
@@ -741,8 +747,8 @@ void publishGatewayDiscovery() {
 
   publishGatewayDiscoveryEntity(
     "sensor",
-    "ssid",
-    "SSID",
+    "wifi_ssid",
+    "WiFi SSID",
     "",
     "",
     "diagnostic",
@@ -753,8 +759,8 @@ void publishGatewayDiscovery() {
 
   publishGatewayDiscoveryEntity(
     "sensor",
-    "rssi",
-    "RSSI",
+    "wifi_rssi",
+    "WiFi RSSI",
     "signal_strength",
     "measurement",
     "diagnostic",
@@ -935,7 +941,7 @@ void publishGatewayState() {
   state["rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
   state["firmware_version"] = FIRMWARE_VERSION;
   state["reset_reason"] = getResetReasonString();
-  state["uptime"] = millis() / 1000;
+  state["uptime"] = esp_timer_get_time() / 1000000;  // 64-bit microsecond counter, in seconds.
   state["free_heap"] = ESP.getFreeHeap();
   state["min_free_heap"] = ESP.getMinFreeHeap();
   state["cpu_temp"] = static_cast<int>(temperatureRead());
