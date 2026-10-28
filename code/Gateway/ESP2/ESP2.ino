@@ -45,12 +45,11 @@ static bool printStaMac() {
   return !allZero;
 }
 
-// Send a text line via ESPNOW broadcast
-static bool sendEspNowBroadcast(const String& line) {
+// Preserve binary command bytes inside the existing fixed-size node packet.
+static bool sendEspNowBroadcast(const uint8_t* data, size_t len) {
   struct_message out{};
-  size_t n = min(line.length(), sizeof(out.json) - 1);
-  memcpy(out.json, line.c_str(), n);
-  out.json[n] = '\0';
+  if (len == 0 || len >= sizeof(out.json)) return false;
+  memcpy(out.json, data, len);
 
   esp_err_t err = esp_now_send(BROADCAST_MAC, reinterpret_cast<const uint8_t*>(&out), sizeof(out));
   if (err != ESP_OK) {
@@ -150,19 +149,49 @@ void setup() {
 }
 
 void loop() {
-  // Read a line from ESP1 and broadcast it over ESPNOW
-  if (Serial1.available() > 0) {
-    String line = Serial1.readStringUntil('\n'); // ESP1 sends newline-terminated
-    line.trim();
-    if (line.length()) {
-      if (sendEspNowBroadcast(line)) {
-        Serial.print("Broadcast: ");
-        Serial.println(line);
+  // Read a little-endian length and binary payload without blocking on partial frames.
+  static uint8_t headerBytes = 0;
+  static uint16_t length = 0;
+  static uint16_t received = 0;
+  static uint8_t payload[sizeof(struct_message::json) - 1];
+  static unsigned long lastByteAt = 0;
+  if (headerBytes != 0 && millis() - lastByteAt >= 100) {
+    headerBytes = 0;
+    length = 0;
+    received = 0;
+    Serial.println("UART command timeout; incomplete frame discarded");
+  }
+
+  while (Serial1.available() > 0) {
+    uint8_t value = static_cast<uint8_t>(Serial1.read());
+    lastByteAt = millis();
+    if (headerBytes < 2) {
+      if (headerBytes == 0) length = value;
+      else length |= static_cast<uint16_t>(value) << 8;
+      ++headerBytes;
+      if (headerBytes == 2 && length == 0) {
+        headerBytes = 0;
+        Serial.println("UART command rejected: empty payload");
+      }
+      continue;
+    }
+
+    // Consume oversized frames completely, but never write them into the buffer.
+    if (length <= sizeof(payload)) payload[received] = value;
+    if (++received == length) {
+      if (length > sizeof(payload)) {
+        Serial.println("UART command rejected: payload exceeds 249 bytes");
+      } else if (sendEspNowBroadcast(payload, length)) {
+        Serial.print("Broadcast command bytes: ");
+        Serial.println(length);
         digitalWrite(LED_PIN, LOW);
         LedStartTime = millis();
       } else {
         Serial.println("ESP-NOW send failed");
       }
+      headerBytes = 0;
+      length = 0;
+      received = 0;
     }
   }
 

@@ -61,6 +61,10 @@ ____________
 
 
 ## 📣 Updates, Bugfixes, and Breaking Changes
+- 28.10.2026
+  - Fixed LoRa reception stopping on SX1262/SX1268 ([#29](https://github.com/PricelessToolkit/CapiBridge/issues/29)).
+  - Fixed encrypted ESP-NOW commands.
+  - **Breaking Change:** Update both ESP1 and ESP2 firmware together.
 - 17.04.2026
   - WebUI for configuration and monitoring.
 - 28.03.2026
@@ -668,4 +672,3 @@ void loop() {
 </details>
 
 <img src="https://raw.githubusercontent.com/PricelessToolkit/CapiBridge/main/img/espnowtraffic.jpg"/>
-

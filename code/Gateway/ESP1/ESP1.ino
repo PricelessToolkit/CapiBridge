@@ -696,17 +696,24 @@ void SendESPNOWCommands() {
         serializeJson(doc, cleaned);
       }
 
-      if (settings.espnowEncryption) {
-        size_t len = cleaned.length();
-        uint8_t buf[len];
-        memcpy(buf, cleaned.c_str(), len);
-        xorBuffer(buf, len);
-        Serial1.write(buf, len);
-        Serial1.write('\n');
-      } else {
-        Serial1.print(cleaned);
-        Serial1.print('\n');
+      // ESP2 preserves the existing 250-byte node packet (249 bytes + null).
+      size_t len = cleaned.length();
+      if (len == 0 || len > 249) {
+        Serial.println("ESP-NOW command rejected: payload must be 1-249 bytes");
+        client.publish(CAPIBRIDGE_COMMAND_TOPIC, "", true);
+        newCommandReceived = false;
+        return;
       }
+
+      uint8_t buf[249];
+      memcpy(buf, cleaned.c_str(), len);
+      if (settings.espnowEncryption) {
+        xorBuffer(buf, len);
+      }
+      // Binary-safe UART framing: little-endian length, then exact payload bytes.
+      const uint8_t header[] = {static_cast<uint8_t>(len), static_cast<uint8_t>(len >> 8)};
+      Serial1.write(header, sizeof(header));
+      Serial1.write(buf, len);
 
       Serial.print("ESP-NOW Command sent: ");
       Serial.println(cleaned);

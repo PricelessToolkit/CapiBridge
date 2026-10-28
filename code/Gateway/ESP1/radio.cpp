@@ -132,7 +132,8 @@ int16_t RuntimeRadio::startReceive() {
   if (radio_ == nullptr) {
     return RADIOLIB_ERR_UNKNOWN;
   }
-  return radio_->startReceive(0);
+  // Let each chipset select continuous RX: zero means single RX on SX126x.
+  return radio_->startReceive();
 }
 
 int16_t RuntimeRadio::transmit(const uint8_t* data, size_t len) {
