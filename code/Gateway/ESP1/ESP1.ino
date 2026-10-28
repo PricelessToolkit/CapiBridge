@@ -640,19 +640,18 @@ void diag() {
 
 // Forward MQTT command payloads out over LoRa after removing the transport selector field.
 void SendLoRaCommands() {
-  if (newCommandReceived && mqttMessage.indexOf("\"rm\":\"lora\"") != -1) {
+  if (newCommandReceived) {
+    StaticJsonDocument<2048> doc;
+    if (deserializeJson(doc, mqttMessage)) return;
+    if (doc["rm"].as<String>() != "lora") return;
+
     radio.detachInterrupt();
     digitalWrite(LED_PIN, LOW);
     LedStartTime = millis();
 
-    String cleaned = mqttMessage;
-    StaticJsonDocument<2048> doc;
-    DeserializationError e = deserializeJson(doc, mqttMessage);
-    if (!e) {
-      doc.remove("rm");
-      cleaned = "";
-      serializeJson(doc, cleaned);
-    }
+    doc.remove("rm");
+    String cleaned;
+    serializeJson(doc, cleaned);
 
     int state = RADIOLIB_ERR_UNKNOWN;
     if (settings.loraEncryption) {
@@ -685,16 +684,15 @@ void SendLoRaCommands() {
 
 // Forward MQTT command payloads to the ESP-NOW co-processor over UART.
 void SendESPNOWCommands() {
-  if (newCommandReceived && mqttMessage.indexOf("\"rm\":\"espnow\"") != -1) {
+  if (newCommandReceived) {
     if (Serial1.available() == 0) {
-      String cleaned = mqttMessage;
       StaticJsonDocument<2048> doc;
-      DeserializationError e = deserializeJson(doc, mqttMessage);
-      if (!e) {
-        doc.remove("rm");
-        cleaned = "";
-        serializeJson(doc, cleaned);
-      }
+      if (deserializeJson(doc, mqttMessage)) return;
+      if (doc["rm"].as<String>() != "espnow") return;
+
+      doc.remove("rm");
+      String cleaned;
+      serializeJson(doc, cleaned);
 
       // ESP2 preserves the existing 250-byte node packet (249 bytes + null).
       size_t len = cleaned.length();
