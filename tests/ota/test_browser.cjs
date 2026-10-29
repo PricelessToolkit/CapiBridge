@@ -20,7 +20,7 @@ const settings = { wifiSsid:'Client WiFi', mqttServer:'broker', mqttPort:1883, g
       const req=route.request(), endpoint=new URL(req.url()).pathname;
       let result={};
       if(endpoint==='/api/settings')result=settings;
-      if(endpoint==='/api/status')result={firmwareVersion:'V1.3.1',radioReady:true,wifiConnected:true};
+      if(endpoint==='/api/status')result={firmwareVersion:'V1.4.0',radioReady:true,wifiConnected:true};
       if(endpoint==='/api/traffic')result={items:[],serialLines:[],nodes:[]};
       if(endpoint==='/api/firmware'){
         if(req.method()==='POST'){
@@ -30,13 +30,13 @@ const settings = { wifiSsid:'Client WiFi', mqttServer:'broker', mqttPort:1883, g
           assert.match(req.postDataBuffer().toString(),/name="firmware"; filename="ESP1.ino.bin"/);
           await route.fulfill({status:mode==='error'?400:200,contentType:'application/json',body:JSON.stringify(mode==='error'?{ok:false,error:'This file is not OTA-capable CapiBridge ESP1 firmware.'}:{ok:true,rebootScheduled:true})});return;
         }
-        result={target:'ESP1',version:'V1.3.1',available:maxSize>0,maxSize};
+        result={target:'ESP1',version:'V1.4.0',available:maxSize>0,maxSize};
       }
       await route.fulfill({contentType:'application/json',body:JSON.stringify(result)});
     });
     const url=`http://127.0.0.1:${server.address().port}/#/settings`;
     await page.goto(url);
-    await page.waitForFunction(()=>document.getElementById('firmwareVersion').textContent.includes('V1.3.1'));
+    await page.waitForFunction(()=>document.getElementById('firmwareVersion').textContent.includes('V1.4.0'));
     assert.equal(await page.locator('#firmwareUpdate').isDisabled(),true);
     const file={name:'ESP1.ino.bin',mimeType:'application/octet-stream',buffer:Buffer.alloc(128)};
     await page.locator('#firmwareFile').setInputFiles(file);
@@ -62,7 +62,7 @@ const settings = { wifiSsid:'Client WiFi', mqttServer:'broker', mqttPort:1883, g
     await reloaded;
     assert.equal(uploadCount,2);
     await page.setViewportSize({width:390,height:844});
-    await page.waitForFunction(()=>document.getElementById('firmwareVersion').textContent.includes('V1.3.1'));
+    await page.waitForFunction(()=>document.getElementById('firmwareVersion').textContent.includes('V1.4.0'));
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
     await page.waitForTimeout(350);
     await page.screenshot({path:'/tmp/capibridge-firmware-mobile.png',fullPage:true});

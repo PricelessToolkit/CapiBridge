@@ -80,7 +80,7 @@ void onReceive() { packetReceived = true; }
 #define AVAIL_ON  "online"
 #define AVAIL_OFF "offline"
 
-const char* FIRMWARE_VERSION = "V1.3.1";
+const char* FIRMWARE_VERSION = "V1.4.0";
 
 // Global gateway state shared across setup, loop, radio handling, MQTT, and the web API.
 RuntimeRadio radio;

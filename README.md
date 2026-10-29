@@ -61,8 +61,16 @@ ____________
 
 
 ## 📣 Updates, Bugfixes, and Breaking Changes
-- 29.10.2026
+
+- 29.10.2026 — **V1.4.0**
+  - **Updates:** Added ESP1 browser OTA in **Settings → Firmware**, with a `.bin` file picker, upload progress, image verification, and automatic reconnection after reboot ([#31](https://github.com/PricelessToolkit/CapiBridge/issues/31)).
+  - Preserve Wi-Fi, MQTT, radio settings, encryption keys, and the Web UI login across OTA updates. Active configuration is saved and read back before writing firmware, including settings originally supplied through `config.h`.
+  - Recommend **Minimal SPIFFS** for two 1,920 KiB firmware slots and more room for future updates. Existing default OTA partitions remain supported when the image fits.
+  - **Bugfixes:** Keep the Web UI available for configuration repair and firmware upload when LoRa initialization fails. Fixed automatic page refresh after an OTA reboot and report flash-save failures when restoring defaults.
   - Fixed WebUI Monitoring page crash with ArduinoJson 6 ([#30](https://github.com/PricelessToolkit/CapiBridge/issues/30)).
+  - **Breaking changes / upgrade notes:** Install this OTA-capable ESP1 firmware once over USB before using browser updates. Changing to Minimal SPIFFS also requires USB; keep **Erase All Flash disabled** to preserve configuration.
+  - Web UI credentials are now saved on first boot. Later changes to `WEBUI_USERNAME` / `WEBUI_PASSWORD` in `config.h` do not replace an existing saved login; restoring gateway defaults retains that login.
+  - ESP2 does not require an update for this release if it already runs the compatible firmware from 28.10.2026. Older installations still need the ESP1/ESP2 protocol update described below.
 - 28.10.2026
   - Fixed LoRa reception stopping on SX1262/SX1268 ([#29](https://github.com/PricelessToolkit/CapiBridge/issues/29)).
   - Fixed encrypted ESP-NOW commands.
