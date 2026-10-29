@@ -171,6 +171,11 @@ A first USB installation using a generic binary cannot recover client values tha
 The Web UI remains available for repair and firmware upload if LoRa initialization fails. This implementation verifies the uploaded image but does not add automatic rollback after a new firmware boots; test firmware on hardware before distributing it.
 
 ## Uploading Code to CapiBridge
+
+Use USB for the first installation. If ESP1 already has OTA-capable firmware, use [How to upload via OTA](#how-to-upload-via-ota-after-the-first-upload).
+
+### First upload via USB
+
 > [!WARNING]
 > ### 🔥Connect the antenna first to prevent damage to the transmitter.🔥
 
@@ -199,6 +204,30 @@ Everything will be ready shortly; the CapiBridge RSSI entity should appear in th
 > [!NOTE]
 > After uploading the code, open the Configuration webpage http://YOUR-CAPIBRIDGE-IP
 > and configure the rest.
+
+
+### How to upload via OTA (after the first upload)
+
+ESP1 must already have OTA-capable CapiBridge firmware installed over USB. No USB connection is needed for subsequent OTA updates. Changing the partition scheme still requires USB.
+
+For each new release, use Arduino IDE:
+
+1. Open [ESP1.ino](code/Gateway/ESP1/ESP1.ino).
+2. Change `FIRMWARE_VERSION`, for example to `"V1.4.1"`.
+3. Select **Board → ESP32C3 Dev Module**.
+4. Select **Partition Scheme → Minimal SPIFFS (1.9MB APP with OTA/128KB SPIFFS)**.
+5. Choose **Sketch → Export Compiled Binary**.
+6. Find **`ESP1.ino.bin`** in the generated `build` folder.
+
+You can rename that file to something clear, such as **`CapiBridge-ESP1-v1.4.1.bin`**.
+
+To upload it:
+
+1. Open the CapiBridge Web UI at `http://YOUR-CAPIBRIDGE-IP` and sign in.
+2. Go to **Settings → Firmware** and select the `.bin` file.
+3. Click **Upload firmware**. Keep power connected and wait for verification, reboot, and automatic reconnection.
+
+Use the application `.bin` only—**not** `.merged.bin`, `.bootloader.bin`, `.partitions.bin`, or an ESP2 binary. Saved configuration and Web UI login remain intact. Save and apply any pending settings edits before uploading.
 
 
 #### Gateway Separation and Encryption Keys
