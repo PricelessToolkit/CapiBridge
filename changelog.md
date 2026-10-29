@@ -9,4 +9,4 @@
   - WebUI for configuration and monitoring.
 - 28.03.2026
   - Added support for "Ra-01S" 433Mhz Module.
-  - `#define LORA_MODULE LORA_MODULE_SX1268    // Ra-01S 433Mhz Module "433Mhz Version" Module CapiBridge v2`
+  - `define LORA_MODULE LORA_MODULE_SX1268    // Ra-01S 433Mhz Module "433Mhz Version" Module CapiBridge v2`
