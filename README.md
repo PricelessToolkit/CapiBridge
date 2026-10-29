@@ -247,11 +247,10 @@ ESP1 must already have OTA-capable CapiBridge firmware installed over USB. No US
 For each new release, use Arduino IDE:
 
 1. Open [ESP1.ino](https://github.com/PricelessToolkit/CapiBridge/blob/dev/code/Gateway/ESP1/ESP1.ino).
-2. Change `FIRMWARE_VERSION`, for example to `"V1.4.1"`.
-3. Select **Board → ESP32C3 Dev Module**.
-4. Select **Partition Scheme → Minimal SPIFFS (1.9MB APP with OTA/128KB SPIFFS)**.
-5. Choose **Sketch → Export Compiled Binary**.
-6. Find **`ESP1.ino.bin`** in the generated `build` folder.
+2. Select **Board → ESP32C3 Dev Module**.
+3. Select **Partition Scheme → Minimal SPIFFS (1.9MB APP with OTA/128KB SPIFFS)**.
+4. Choose **Sketch → Export Compiled Binary**.
+5. Find **`ESP1.ino.bin`** in the generated `build` folder.
 
 You can rename that file to something clear, such as **`CapiBridge-ESP1-v1.4.1.bin`**.
 
