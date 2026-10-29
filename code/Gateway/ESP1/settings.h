@@ -10,6 +10,8 @@ static constexpr uint32_t SETTINGS_MAGIC = 0x43424944;  // CBID
 static constexpr uint16_t SETTINGS_VERSION = 1;
 static constexpr uint8_t SETTINGS_MAX_KEY_LENGTH = 16;
 
+// Version-1 on-flash layout: keep field order/types unchanged. Future layout
+// changes must migrate this blob explicitly instead of discarding client settings.
 // This struct is the runtime source of truth for every editable gateway setting.
 struct GatewaySettings {
   uint32_t magic;
@@ -44,9 +46,11 @@ public:
   bool save(const GatewaySettings& settings);
   bool reset();
   bool wasLoadedFromFlash() const;
+  bool hasRejectedStoredSettings() const { return rejectedStoredSettings_; }
 
 private:
   bool loadedFromFlash_ = false;
+  bool rejectedStoredSettings_ = false;
 };
 
 // Helper functions convert between upload defaults, runtime validation, and the web API JSON format.

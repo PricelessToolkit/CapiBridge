@@ -2,6 +2,8 @@
 #include "settings.h"
 #include "radio.h"
 #include "web_ui.h"
+#include "firmware_update.h"
+#include "web_auth.h"
 #include <SPI.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
@@ -84,6 +86,12 @@ const char* FIRMWARE_VERSION = "V1.3.1";
 RuntimeRadio radio;
 GatewaySettings settings;
 SettingsStore settingsStore;
+WebUiCredentials webUiCredentials{};
+bool webUiCredentialsReady = false;
+FirmwareUpload firmwareUpload;
+bool firmwareRequestStarted = false;
+bool firmwareFileReceived = false;
+bool radioReady = false;
 WebServer server(80);
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -200,15 +208,19 @@ bool hasConfiguredMqtt() {
 }
 
 bool webUiPasswordEnabled() {
-  return strlen(WEBUI_PASSWORD) > 0;
+  return strlen(webUiCredentials.password) > 0;
 }
 
 bool ensureWebUiAuth() {
+  if (!webUiCredentialsReady) {
+    server.send(503, "text/plain", "Cannot load saved Web UI credentials. Check flash storage.");
+    return false;
+  }
   if (!webUiPasswordEnabled()) {
     return true;
   }
 
-  if (server.authenticate(WEBUI_USERNAME, WEBUI_PASSWORD)) {
+  if (server.authenticate(webUiCredentials.username, webUiCredentials.password)) {
     return true;
   }
 
@@ -844,7 +856,8 @@ void handleGetStatus() {
   if (!ensureWebUiAuth()) {
     return;
   }
-  StaticJsonDocument<512> doc;
+  StaticJsonDocument<640> doc;
+  doc["radioReady"] = radioReady;
   doc["wifiConnected"] = WiFi.status() == WL_CONNECTED;
   doc["mqttConnected"] = client.connected();
   doc["ipAddress"] = WiFi.status() == WL_CONNECTED ? ipToString(WiFi.localIP()) : String("");
@@ -902,6 +915,85 @@ void handleGetTraffic() {
 // Delay the reboot slightly so HTTP responses finish before ESP.restart() is called.
 void scheduleReboot() {
   rebootAt = millis() + 1500;
+}
+
+// Firmware upload uses a custom header so a cross-origin HTML form cannot
+// initiate an update, even when browser Basic Auth credentials are cached.
+bool firmwareRequestAllowed() {
+  return webUiCredentialsReady &&
+         (!webUiPasswordEnabled() || server.authenticate(webUiCredentials.username, webUiCredentials.password)) &&
+         server.header("X-CapiBridge-OTA") == "ESP1";
+}
+
+void handleGetFirmware() {
+  if (!ensureWebUiAuth()) return;
+  StaticJsonDocument<256> doc;
+  doc["target"] = "ESP1";
+  doc["version"] = FIRMWARE_VERSION;
+  doc["maxSize"] = FirmwareUpload::capacity();
+  doc["available"] = FirmwareUpload::capacity() > 0;
+  sendJsonResponse(200, doc);
+}
+
+void handleFirmwareUpload() {
+  HTTPUpload& upload = server.upload();
+  if (upload.status == UPLOAD_FILE_START) {
+    if (firmwareRequestStarted) {
+      firmwareUpload.cancel("Choose exactly one firmware file.");
+      return;
+    }
+    firmwareRequestStarted = true;
+    firmwareFileReceived = false;
+    if (!firmwareRequestAllowed() || rebootAt != 0) {
+      firmwareUpload.cancel("Unauthorized update or reboot already pending.");
+      return;
+    }
+    String filename = upload.filename;
+    filename.toLowerCase();
+    if (upload.name != "firmware" || !filename.endsWith(".bin")) {
+      firmwareUpload.cancel("Choose an ESP1 application .bin file.");
+      return;
+    }
+    String sizeText = server.header("X-Firmware-Size");
+    char* end = nullptr;
+    unsigned long fileSize = strtoul(sizeText.c_str(), &end, 10);
+    if (sizeText.isEmpty() || !isDigit(sizeText[0]) || *end != '\0' || fileSize == 0 || fileSize > FirmwareUpload::capacity()) {
+      firmwareUpload.cancel("Invalid firmware size or insufficient OTA space.");
+      return;
+    }
+    if (settingsStore.hasRejectedStoredSettings()) {
+      firmwareUpload.cancel("Stored configuration could not be loaded. Review and save Settings before updating.");
+      return;
+    }
+    String error;
+    if (!validateSettings(settings, error) || !settingsStore.save(settings)) {
+      firmwareUpload.cancel("Cannot preserve configuration in flash. Update cancelled.");
+      return;
+    }
+    firmwareUpload.begin(fileSize);
+  } else if (upload.status == UPLOAD_FILE_WRITE) {
+    if (firmwareRequestAllowed()) firmwareUpload.write(upload.buf, upload.currentSize);
+  } else if (upload.status == UPLOAD_FILE_END) {
+    firmwareFileReceived = true;
+  } else if (upload.status == UPLOAD_FILE_ABORTED) {
+    firmwareUpload.cancel("Upload interrupted. Firmware was not activated.");
+    firmwareRequestStarted = firmwareFileReceived = false;
+  }
+}
+
+void handlePostFirmware() {
+  bool allowed = firmwareRequestAllowed();
+  bool ok = allowed && firmwareRequestStarted && firmwareFileReceived && firmwareUpload.finish();
+  if (!ok && firmwareUpload.error().isEmpty()) firmwareUpload.cancel("Missing or unauthorized firmware upload.");
+  firmwareRequestStarted = firmwareFileReceived = false;
+  if (!ensureWebUiAuth()) return;
+  StaticJsonDocument<384> doc;
+  doc["ok"] = ok;
+  if (!ok) doc["error"] = firmwareUpload.error();
+  else doc["rebootScheduled"] = true;
+  server.sendHeader("Connection", "close");
+  sendJsonResponse(ok ? 200 : (allowed ? 400 : 403), doc);
+  if (ok) scheduleReboot();
 }
 
 // Validate and save settings posted from the web UI, then reboot to apply them cleanly.
@@ -969,10 +1061,16 @@ void handleReset() {
   if (!ensureWebUiAuth()) {
     return;
   }
-  setDefaultSettings(settings);
-  settingsStore.save(settings);
-
-  StaticJsonDocument<128> doc;
+  GatewaySettings defaults;
+  setDefaultSettings(defaults);
+  StaticJsonDocument<192> doc;
+  if (!settingsStore.save(defaults)) {
+    doc["ok"] = false;
+    doc["error"] = "Failed to save defaults to flash.";
+    sendJsonResponse(500, doc);
+    return;
+  }
+  settings = defaults;
   doc["ok"] = true;
   sendJsonResponse(200, doc);
   scheduleReboot();
@@ -987,6 +1085,10 @@ void handleNotFound() {
 
 // Register every API route used by the embedded single-page web interface.
 void setupWebServer() {
+  const char* otaHeaders[] = {"X-CapiBridge-OTA", "X-Firmware-Size"};
+  server.collectHeaders(otaHeaders, 2);
+  server.on("/api/firmware", HTTP_GET, handleGetFirmware);
+  server.on("/api/firmware", HTTP_POST, handlePostFirmware, handleFirmwareUpload);
   server.on("/", HTTP_GET, handleRoot);
   server.on("/api/settings", HTTP_GET, handleGetSettings);
   server.on("/api/settings", HTTP_POST, handlePostSettings);
@@ -1036,6 +1138,7 @@ void setup() {
 
   setDefaultSettings(settings);
   settingsStore.load(settings);
+  webUiCredentialsReady = loadOrCreateWebUiCredentials(webUiCredentials);
 
   setup_wifi();
   setupWebServer();
@@ -1049,14 +1152,16 @@ void setup() {
   String radioError;
   if (!radio.begin(settings, onReceive, radioError)) {
     Serial.println(radioError);
-    while (true) { delay(10); }
+    // Keep the Web UI and OTA available for recovery when the radio fails.
+  } else {
+    radioReady = true;
   }
 
   printActiveConfig();
 
-  if (radio.startReceive() != RADIOLIB_ERR_NONE) {
+  if (radioReady && radio.startReceive() != RADIOLIB_ERR_NONE) {
     Serial.println(F("Failed to start non-blocking RX"));
-  } else {
+  } else if (radioReady) {
     Serial.println(F("----- All set, waiting for incoming JSON payloads -----"));
   }
 
@@ -1121,7 +1226,7 @@ void loop() {
   }
 
   // LoRa packets are handled after the interrupt flag is raised, then the radio is re-armed for RX.
-  if (packetReceived) {
+  if (radioReady && packetReceived) {
     packetReceived = false;
 
     uint8_t buf[256];

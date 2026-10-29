@@ -105,6 +105,15 @@ static const char WEB_UI_HTML[] PROGMEM = R"rawliteral(
           <div class="grid-2"><div class="card"><div class="card-header"><h3 class="card-title"><svg viewBox="0 0 24 24"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9m2.9 11.3c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5m2.9-11.4C23 8.8 23 15.1 19.1 19"/></svg>LoRa</h3></div><div class="form-hint warning">Must match your sensors and region.</div><div class="grid-2"><div class="form-group"><label class="form-label">Module</label><input class="form-input" id="loraModuleDisplay" type="text" readonly></div><div class="form-group"><label class="form-label" for="band">Band</label><select class="form-select" id="band"><option value="433">433.0 MHz</option><option value="868">868.0 MHz</option><option value="915">915.0 MHz</option></select></div><div class="form-group"><label class="form-label" for="loraTxPower">TX Power</label><input class="form-input" id="loraTxPower" type="number"></div><div class="form-group"><label class="form-label" for="loraSignalBandwidth">Bandwidth</label><select class="form-select" id="loraSignalBandwidth"><option value="125">125.0 kHz</option><option value="250">250.0 kHz</option><option value="500">500.0 kHz</option></select></div><div class="form-group"><label class="form-label" for="loraSpreadingFactor">Spreading Factor</label><select class="form-select" id="loraSpreadingFactor"><option value="5">SF5</option><option value="6">SF6</option><option value="7">SF7</option><option value="8">SF8</option><option value="9">SF9</option><option value="10">SF10</option><option value="11">SF11</option><option value="12">SF12</option></select></div><div class="form-group"><label class="form-label" for="loraCodingRate">Coding Rate</label><select class="form-select" id="loraCodingRate"><option value="5">4/5</option><option value="6">4/6</option><option value="7">4/7</option><option value="8">4/8</option></select></div><div class="form-group"><label class="form-label" for="loraSyncWord">Sync Word</label><input class="form-input" id="loraSyncWord" type="text" placeholder="0x12"></div><div class="form-group"><label class="form-label" for="loraPreambleLength">Preamble Length</label><input class="form-input" id="loraPreambleLength" type="number"></div></div></div><div class="card"><div class="card-header"><h3 class="card-title"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h8"/><circle cx="18" cy="18" r="2"/></svg>UI Config</h3><span class="badge warning">Browser only</span></div><div class="ui-config-grid"><div class="form-group"><label class="form-label" for="uiTextScale">Text Size</label><select class="form-select" id="uiTextScale"><option value="0.95">Compact</option><option value="1">Default</option><option value="1.08" selected>Large</option><option value="1.16">XL</option></select></div><div class="form-group"><label class="form-label" for="uiAccentColor">Accent Color</label><input class="form-input color-input" id="uiAccentColor" type="color" value="#f0883e"></div></div><div class="btn-group"><button class="btn btn-secondary" type="button" id="resetUiConfig">Reset UI Style</button></div><div class="form-hint ui-config-note">Applies only in this browser. Gateway settings stay unchanged.</div></div></div>
           <div class="btn-group"><button class="btn btn-primary" type="submit">Save & Reboot</button><button class="btn btn-secondary" type="button" id="reloadSettings">Reload</button></div><div class="message" id="settingsMessage"></div>
         </form>
+        <div class="card" id="firmwareCard" style="margin-top:20px">
+          <div class="card-header"><h3 class="card-title"><svg viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M5 17v4h14v-4"/></svg>Firmware</h3></div>
+          <div class="form-hint" id="firmwareVersion">Loading current version...</div>
+          <div class="form-group"><label class="form-label" for="firmwareFile">Firmware file (.bin)</label><input class="form-input" type="file" id="firmwareFile" accept=".bin,application/octet-stream"></div>
+          <div class="form-hint">Updates ESP1 only. Saved configuration and Web UI login are preserved. Save any settings changes first. Keep power connected until the gateway restarts.</div>
+          <div class="btn-group"><button class="btn btn-primary" type="button" id="firmwareUpdate" disabled>Upload firmware</button></div>
+          <progress id="firmwareProgress" max="100" value="0" style="display:none;width:100%;margin-top:12px" aria-label="Firmware upload progress"></progress>
+          <div class="message" id="firmwareMessage" role="status" aria-live="polite"></div>
+        </div>
       </section>
 
       <!-- Help page: project links plus markdown content loaded from GitHub. -->
@@ -145,6 +154,13 @@ static const char WEB_UI_HTML[] PROGMEM = R"rawliteral(
     const uiAccentColor=document.getElementById('uiAccentColor');
     const resetUiConfig=document.getElementById('resetUiConfig');
     const defaultAccentColor='#49A6FD';
+    let firmwareBusy=false;
+    let settingsDirty=false;
+    let firmwareInfo=null;
+    const firmwareFile=document.getElementById('firmwareFile');
+    const firmwareUpdate=document.getElementById('firmwareUpdate');
+    const firmwareMessage=document.getElementById('firmwareMessage');
+    const firmwareProgress=document.getElementById('firmwareProgress');
     let settingsCache=null;
     let trafficCache=[];
     let serialCache=[];
@@ -185,7 +201,7 @@ static const char WEB_UI_HTML[] PROGMEM = R"rawliteral(
 
     function setToggleButton(id,value){const el=document.getElementById(id);if(!el)return;const active=!!value;el.dataset.toggle=String(active);el.classList.toggle('active',active)}
     function getToggleButtonValue(id){const el=document.getElementById(id);return !!(el&&el.dataset.toggle==='true')}
-    function toggleSettingButton(id){setToggleButton(id,!getToggleButtonValue(id))}
+    function toggleSettingButton(id){if(firmwareBusy)return;settingsDirty=true;setToggleButton(id,!getToggleButtonValue(id))}
 
     function renderStatus(status,settings){
       connectionBadge.className='badge '+(status.wifiConnected?'success':'warning');
@@ -194,7 +210,7 @@ static const char WEB_UI_HTML[] PROGMEM = R"rawliteral(
       sidebarLed.className='status-led '+(status.wifiConnected?'':(status.apEnabled?'warn':'danger'));
       dashboardGrid.innerHTML=[['WiFi',statusBadge(status.wifiConnected)],['MQTT',statusBadge(status.mqttConnected)],['IP Address',status.ipAddress||'Unavailable'],['Setup AP',status.apEnabled?status.apSsid:'Off'],['Firmware',status.firmwareVersion],['Config Source',status.settingsSource],['Gateway Key',settings.gatewayKey],['MQTT Broker',`${settings.mqttServer||'Not set'}:${settings.mqttPort}`]].map(([l,v])=>`<div class="status-item"><span class="status-label">${l}</span><span class="status-value ${l==='Gateway Key'?'hl':''}">${v}</span></div>`).join('');
       radioGrid.innerHTML=[['Module',settings.loraModuleLabel],['Band',`${settings.band} MHz`],['TX Power',`${settings.loraTxPower} dBm`],['Bandwidth',`${settings.loraSignalBandwidth} kHz`],['Spreading Factor',`SF${settings.loraSpreadingFactor}`],['Coding Rate',`4/${settings.loraCodingRate}`],['Sync Word',`0x${Number(settings.loraSyncWord).toString(16).toUpperCase().padStart(2,'0')}`],['Preamble',settings.loraPreambleLength]].map(([l,v])=>`<div class="status-item"><span class="status-label">${l}</span><span class="status-value">${v}</span></div>`).join('');
-      runtimeGrid.innerHTML=[['WiFi RSSI',status.wifiRssi],['Free Heap',`${status.freeHeap} bytes`],['Uptime',status.uptime],['LoRa Enc',settings.loraEncryption?'Enabled':'Disabled'],['ESP-NOW Enc',settings.espnowEncryption?'Enabled':'Disabled'],['Discovery',settings.discoveryEveryPacket?'Every packet':'Boot only'],['ROW Debug',settings.rowDebug?'Enabled':'Disabled'],['AP IP',status.apEnabled?(status.apIp||'Active'):'Inactive']].map(([l,v])=>`<div class="status-item"><span class="status-label">${l}</span><span class="status-value">${v}</span></div>`).join('');
+      runtimeGrid.innerHTML=[['LoRa Radio',status.radioReady?'Ready':'Failed — recovery available'],['WiFi RSSI',status.wifiRssi],['Free Heap',`${status.freeHeap} bytes`],['Uptime',status.uptime],['LoRa Enc',settings.loraEncryption?'Enabled':'Disabled'],['ESP-NOW Enc',settings.espnowEncryption?'Enabled':'Disabled'],['Discovery',settings.discoveryEveryPacket?'Every packet':'Boot only'],['ROW Debug',settings.rowDebug?'Enabled':'Disabled'],['AP IP',status.apEnabled?(status.apIp||'Active'):'Inactive']].map(([l,v])=>`<div class="status-item"><span class="status-label">${l}</span><span class="status-value">${v}</span></div>`).join('');
     }
 
     function renderWorkingNodes(items){if(!workingNodesGrid)return;workingNodesGrid.innerHTML=items.length?items.map(item=>{const sourceClass=item.source==='LoRa'?'source-lora':'source-espnow';const battery=item.battery!==undefined&&item.battery!==null&&item.battery!==''?`<span class="badge">${escapeHtml(item.battery)}%</span>`:'';const rssi=item.rssi!==undefined?`<span class="node-meta">RSSI ${item.rssi} dBm</span>`:'';return `<div class="node-card status-${item.status}"><div class="node-card-header"><div><div class="node-name">${escapeHtml(item.nodeId)}</div><div class="node-meta">Last seen ${formatAge(item.ageSeconds)}</div></div>${rssi}</div><div class="node-badges"><span class="badge ${sourceClass}">${item.source}</span><span class="badge status-${item.status}">${normalizeStatusLabel(item.status)}</span>${battery}</div></div>`}).join(''):'<div class="empty-state">No active nodes discovered yet.</div>'}
@@ -233,7 +249,56 @@ static const char WEB_UI_HTML[] PROGMEM = R"rawliteral(
 
     async function fetchJson(path){const response=await fetch(path,{cache:'no-store'});if(!response.ok)throw new Error(`Request failed: ${response.status}`);return response.json()}
     async function loadTraffic(){const traffic=await fetchJson('/api/traffic');trafficCache=traffic.items||[];serialCache=traffic.serialLines||[];renderWorkingNodes(traffic.nodes||[]);renderTraffic(trafficCache)}
-    async function loadAll(){clearMessage(settingsMessage);clearMessage(actionsMessage);const [settings,status]=await Promise.all([fetchJson('/api/settings'),fetchJson('/api/status')]);settingsCache=settings;renderStatus(status,settings);fillForm(settings);await loadTraffic()}
+    async function loadAll(){if(firmwareBusy)return;clearMessage(settingsMessage);clearMessage(actionsMessage);const [settings,status]=await Promise.all([fetchJson('/api/settings'),fetchJson('/api/status')]);settingsCache=settings;renderStatus(status,settings);fillForm(settings);settingsDirty=false;await loadFirmwareInfo();await loadTraffic()}
+
+    function updateFirmwareButton(){firmwareUpdate.disabled=firmwareBusy||!firmwareInfo?.available||!firmwareFile.files.length}
+    async function loadFirmwareInfo(){
+      try{firmwareInfo=await fetchJson('/api/firmware');document.getElementById('firmwareVersion').textContent=`Current version: ESP1 · ${firmwareInfo.version} · ${Math.floor(firmwareInfo.maxSize/1024)} KiB maximum`;if(!firmwareInfo.available)showMessage(firmwareMessage,'No OTA slot available. Install an OTA partition scheme over USB first.',true)}
+      catch(error){firmwareInfo=null;showMessage(firmwareMessage,'Cannot check firmware update availability. Reload to try again.',true)}
+      updateFirmwareButton();
+    }
+    firmwareFile.addEventListener('change',()=>{clearMessage(firmwareMessage);updateFirmwareButton()});
+    settingsForm.addEventListener('input',()=>{settingsDirty=true});
+    settingsForm.addEventListener('change',()=>{settingsDirty=true});
+    window.addEventListener('beforeunload',event=>{if(firmwareBusy){event.preventDefault();event.returnValue=''}});
+    async function reconnectAfterFirmware(){
+      showMessage(firmwareMessage,'Firmware verified. Restarting ESP1 and reconnecting...',false);
+      await new Promise(resolve=>setTimeout(resolve,4000));
+      for(let attempt=0;attempt<40;attempt++){
+        try{const response=await fetch('/api/firmware',{cache:'no-store',signal:AbortSignal.timeout(2000)});if(response.ok){firmwareBusy=false;location.reload();return}}
+        catch(error){}
+        await new Promise(resolve=>setTimeout(resolve,1500));
+      }
+      showMessage(firmwareMessage,'Update accepted, but ESP1 has not reconnected. Reopen its IP address or connect to the CapiBridge setup WiFi.',true);
+    }
+    firmwareUpdate.addEventListener('click',async()=>{
+      clearMessage(firmwareMessage);
+      if(settingsDirty){showMessage(firmwareMessage,'Save & Reboot your settings, or Reload them, before updating firmware.',true);return}
+      const file=firmwareFile.files[0];
+      if(!file||!file.name.toLowerCase().endsWith('.bin')){showMessage(firmwareMessage,'Choose an ESP1 application .bin file.',true);return}
+      if(firmwareBusy)return;
+      firmwareBusy=true;
+      const controls=[...document.querySelectorAll('button,input,select,textarea')].filter(el=>!el.disabled);
+      controls.forEach(el=>el.disabled=true);firmwareUpdate.disabled=true;
+      firmwareProgress.style.display='block';firmwareProgress.value=0;
+      showMessage(firmwareMessage,'Uploading ESP1 firmware: 0%',false);
+      try{
+        await loadFirmwareInfo();
+        if(!firmwareInfo?.available)throw new Error('Firmware update is unavailable.');
+        if(!file.size||file.size>firmwareInfo.maxSize)throw new Error('The selected firmware is empty or too large for the OTA slot.');
+        await new Promise((resolve,reject)=>{
+          const xhr=new XMLHttpRequest();xhr.open('POST','/api/firmware');xhr.timeout=180000;
+          xhr.setRequestHeader('X-CapiBridge-OTA','ESP1');xhr.setRequestHeader('X-Firmware-Size',String(file.size));
+          xhr.upload.onprogress=event=>{if(event.lengthComputable){const percent=Math.round(event.loaded/event.total*100);firmwareProgress.value=percent;showMessage(firmwareMessage,percent===100?'Upload complete. Verifying firmware...':`Uploading ESP1 firmware: ${percent}%`,false)}};
+          xhr.onload=()=>{let result;try{result=JSON.parse(xhr.responseText)}catch(error){reject(new Error('Invalid update response. Check the gateway before retrying.'));return}if(xhr.status!==200||!result.ok){reject(new Error(result.error||'Firmware update rejected.'));return}resolve()};
+          xhr.onerror=()=>reject(new Error('Connection lost. Reopen the gateway to check its version before retrying.'));
+          xhr.ontimeout=()=>reject(new Error('Upload timed out. Reopen the gateway to check its version before retrying.'));
+          const body=new FormData();body.append('firmware',file);xhr.send(body);
+        });
+        await reconnectAfterFirmware();
+      }catch(error){showMessage(firmwareMessage,error.message,true)}
+      finally{firmwareBusy=false;controls.forEach(el=>el.disabled=false);updateFirmwareButton()}
+    });
 
     trafficSourceFilter.addEventListener('change',()=>renderTraffic(trafficCache));
     trafficStatusFilter.addEventListener('change',()=>renderTraffic(trafficCache));
@@ -241,7 +306,7 @@ static const char WEB_UI_HTML[] PROGMEM = R"rawliteral(
     if(uiAccentColor)uiAccentColor.addEventListener('input',event=>{localStorage.setItem('capibridge-ui-accent',event.target.value);applyAccentColor(event.target.value)});
     if(resetUiConfig)resetUiConfig.addEventListener('click',()=>{localStorage.removeItem('capibridge-ui-font-scale');localStorage.removeItem('capibridge-ui-accent');applyUiPreferences()});
 
-    settingsForm.addEventListener('submit',async event=>{event.preventDefault();clearMessage(settingsMessage);let keyBytes;try{keyBytes=JSON.parse(document.getElementById('encryptionKey').value||'[]')}catch(error){showMessage(settingsMessage,'Encryption key must be valid JSON, for example ["0x4B","0xA3"].',true);return}
+    settingsForm.addEventListener('submit',async event=>{event.preventDefault();if(firmwareBusy)return;clearMessage(settingsMessage);let keyBytes;try{keyBytes=JSON.parse(document.getElementById('encryptionKey').value||'[]')}catch(error){showMessage(settingsMessage,'Encryption key must be valid JSON, for example ["0x4B","0xA3"].',true);return}
       const syncWordText=document.getElementById('loraSyncWord').value.trim();
       const syncWordValue=syncWordText.toLowerCase().startsWith('0x')?parseInt(syncWordText,16):parseInt(syncWordText,16);
       if(Number.isNaN(syncWordValue)){showMessage(settingsMessage,'Sync Word must be a valid hex value like 0x12.',true);return}
@@ -255,7 +320,7 @@ static const char WEB_UI_HTML[] PROGMEM = R"rawliteral(
 
     loadPage();
     loadAll().catch(error=>showMessage(actionsMessage,error.message,true));
-    setInterval(()=>{fetchJson('/api/status').then(status=>{if(settingsCache){renderStatus(status,settingsCache)}}).catch(()=>{});loadTraffic().catch(()=>{})},2000);
+    setInterval(()=>{if(firmwareBusy)return;fetchJson('/api/status').then(status=>{if(settingsCache){renderStatus(status,settingsCache)}}).catch(()=>{});loadTraffic().catch(()=>{})},2000);
   </script>
 </body>
 </html>

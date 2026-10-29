@@ -60,6 +60,13 @@ bool SettingsStore::load(GatewaySettings& settings) {
     return false;
   }
 
+  if (!prefs.isKey(kPrefsBlobKey)) {
+    prefs.end();
+    loadedFromFlash_ = false;
+    return false;
+  }
+  // Retain unknown/corrupt blobs until an explicit settings save replaces them.
+  rejectedStoredSettings_ = true;
   GatewaySettings stored;
   size_t read = prefs.getBytes(kPrefsBlobKey, &stored, sizeof(stored));
   prefs.end();
@@ -79,6 +86,7 @@ bool SettingsStore::load(GatewaySettings& settings) {
   }
 
   settings = stored;
+  rejectedStoredSettings_ = false;
   loadedFromFlash_ = true;
   return true;
 }
@@ -91,8 +99,13 @@ bool SettingsStore::save(const GatewaySettings& settings) {
   }
 
   size_t written = prefs.putBytes(kPrefsBlobKey, &settings, sizeof(settings));
+  GatewaySettings verified;
+  bool matches = written == sizeof(settings) &&
+      prefs.getBytes(kPrefsBlobKey, &verified, sizeof(verified)) == sizeof(verified) &&
+      memcmp(&settings, &verified, sizeof(settings)) == 0;
   prefs.end();
-  loadedFromFlash_ = written == sizeof(settings);
+  loadedFromFlash_ = matches;
+  if (matches) rejectedStoredSettings_ = false;
   return loadedFromFlash_;
 }
 
@@ -106,6 +119,7 @@ bool SettingsStore::reset() {
   bool ok = prefs.remove(kPrefsBlobKey);
   prefs.end();
   loadedFromFlash_ = false;
+  if (ok) rejectedStoredSettings_ = false;
   return ok;
 }
 
@@ -146,6 +160,15 @@ void setDefaultSettings(GatewaySettings& settings) {
 
 // Reject impossible or unsupported combinations before they reach the radio or web UI.
 bool validateSettings(const GatewaySettings& settings, String& error) {
+  if (!memchr(settings.gatewayKey, '\0', sizeof(settings.gatewayKey)) ||
+      !memchr(settings.wifiSsid, '\0', sizeof(settings.wifiSsid)) ||
+      !memchr(settings.wifiPassword, '\0', sizeof(settings.wifiPassword)) ||
+      !memchr(settings.mqttUsername, '\0', sizeof(settings.mqttUsername)) ||
+      !memchr(settings.mqttPassword, '\0', sizeof(settings.mqttPassword)) ||
+      !memchr(settings.mqttServer, '\0', sizeof(settings.mqttServer))) {
+    error = "Invalid stored settings string.";
+    return false;
+  }
   if (strlen(settings.gatewayKey) == 0) {
     error = "Gateway key cannot be empty.";
     return false;

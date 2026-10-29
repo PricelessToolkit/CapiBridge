@@ -1,4 +1,6 @@
 - 29.10.2026
+  - Added ESP1 browser firmware updates in Settings → Firmware, with upload progress and reboot reconnection.
+  - Preserve active configuration and Web UI login across OTA updates; keep recovery Web UI available after LoRa initialization failure.
   - Fixed WebUI Monitoring page crash with ArduinoJson 6 ([#30](https://github.com/PricelessToolkit/CapiBridge/issues/30)).
 - 28.10.2026
   - Fixed LoRa reception stopping on SX1262/SX1268 ([#29](https://github.com/PricelessToolkit/CapiBridge/issues/29)).

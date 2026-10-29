@@ -18,6 +18,7 @@
 
 #define BAND 868.0                          // 433.0 / 868.0 / 915.0
 
+// Login defaults are saved on first boot and preserved across OTA updates.
 #define WEBUI_PASSWORD "password"           // Empty string disables Web UI password protection
 #define WEBUI_USERNAME "admin"              // Fixed browser login name for the protected Web UI
 
