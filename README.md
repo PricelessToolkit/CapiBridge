@@ -108,18 +108,6 @@ Install these through **Library Manager**:
 - **PubSubClient**
 - **ArduinoJson**
 
-These are included with the **ESP32 board package**:
-
-- **Arduino core** (`Arduino.h`)
-- **SPI** (`SPI.h`)
-- **WiFi** (`WiFi.h`)
-- **WebServer** (`WebServer.h`)
-- **Preferences** (`Preferences.h`)
-- **Update** (`Update.h`)
-- **ESP-NOW** (`esp_now.h`)
-
-ESP-IDF support headers (`esp_wifi.h`, `esp_err.h`, `esp_ota_ops.h`, and `esp_app_format.h`) are also included with the ESP32 board package.
-
 CapiBridge is based on ESP32-C3, so if you are using ESP32 for the first time, you need to install the ESP32 board and all libraries in your Arduino IDE.
 - In your Arduino IDE, go to File> Preferences.
 - Enter `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json` into the “Additional Boards Manager URLs” field. Then, click the “OK” button
