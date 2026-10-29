@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -19,8 +19,5 @@ ARDUINOJSON_BEGIN_PRIVATE_NAMESPACE
 template <typename T1, typename T2>
 class InvalidConversion;  // Error here? See https://arduinojson.org/v7/invalid-conversion/
 // clang-format on
-
-template <typename T>
-struct ConverterNeedsWriteableRef;
 
 ARDUINOJSON_END_PRIVATE_NAMESPACE

@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
@@ -9,6 +9,7 @@
 #include <string>
 
 #include "Allocators.hpp"
+#include "Literals.hpp"
 
 TEST_CASE("JsonDocument::clear()") {
   SpyingAllocator spy;
@@ -22,7 +23,7 @@ TEST_CASE("JsonDocument::clear()") {
   }
 
   SECTION("releases resources") {
-    doc[std::string("hello")] = std::string("world");
+    doc["hello"_s] = "world"_s;
     spy.clearLog();
 
     doc.clear();

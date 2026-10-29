@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -25,9 +25,9 @@ class JsonSerializer : public VariantDataVisitor<size_t> {
     auto slotId = array.head();
 
     while (slotId != NULL_SLOT) {
-      auto slot = resources_->getSlot(slotId);
+      auto slot = resources_->getVariant(slotId);
 
-      slot->data()->accept(*this);
+      slot->accept(*this, resources_);
 
       slotId = slot->next();
 
@@ -44,24 +44,26 @@ class JsonSerializer : public VariantDataVisitor<size_t> {
 
     auto slotId = object.head();
 
-    while (slotId != NULL_SLOT) {
-      auto slot = resources_->getSlot(slotId);
+    bool isKey = true;
 
-      formatter_.writeString(slot->key());
-      write(':');
-      slot->data()->accept(*this);
+    while (slotId != NULL_SLOT) {
+      auto slot = resources_->getVariant(slotId);
+      slot->accept(*this, resources_);
 
       slotId = slot->next();
 
       if (slotId != NULL_SLOT)
-        write(',');
+        write(isKey ? ':' : ',');
+
+      isKey = !isKey;
     }
 
     write('}');
     return bytesWritten();
   }
 
-  size_t visit(JsonFloat value) {
+  template <typename T>
+  enable_if_t<is_floating_point<T>::value, size_t> visit(T value) {
     formatter_.writeFloat(value);
     return bytesWritten();
   }
@@ -127,7 +129,9 @@ ARDUINOJSON_BEGIN_PUBLIC_NAMESPACE
 
 // Produces a minified JSON document.
 // https://arduinojson.org/v7/api/json/serializejson/
-template <typename TDestination>
+template <
+    typename TDestination,
+    detail::enable_if_t<!detail::is_pointer<TDestination>::value, int> = 0>
 size_t serializeJson(JsonVariantConst source, TDestination& destination) {
   using namespace detail;
   return serialize<JsonSerializer>(source, destination);
@@ -149,10 +153,10 @@ inline size_t measureJson(JsonVariantConst source) {
 }
 
 #if ARDUINOJSON_ENABLE_STD_STREAM
-template <typename T>
-inline typename detail::enable_if<
-    detail::is_convertible<T, JsonVariantConst>::value, std::ostream&>::type
-operator<<(std::ostream& os, const T& source) {
+template <typename T,
+          detail::enable_if_t<
+              detail::is_convertible<T, JsonVariantConst>::value, int> = 0>
+inline std::ostream& operator<<(std::ostream& os, const T& source) {
   serializeJson(source, os);
   return os;
 }

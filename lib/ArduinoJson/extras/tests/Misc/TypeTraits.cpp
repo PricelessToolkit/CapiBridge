@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
@@ -210,6 +210,23 @@ TEST_CASE("Polyfills/type_traits") {
     CHECK(is_enum<EmptyClass>::value == false);
     CHECK(is_enum<bool>::value == false);
     CHECK(is_enum<double>::value == false);
+  }
+
+  SECTION("remove_cv") {
+    CHECK(is_same<remove_cv_t<const int>, int>::value);
+    CHECK(is_same<remove_cv_t<volatile int>, int>::value);
+    CHECK(is_same<remove_cv_t<const volatile int>, int>::value);
+    CHECK(is_same<remove_cv_t<int>, int>::value);
+    CHECK(is_same<remove_cv_t<decltype("toto")>, decltype("toto")>::value);
+  }
+
+  SECTION("decay") {
+    CHECK(is_same<decay_t<int>, int>::value);
+    CHECK(is_same<decay_t<int&>, int>::value);
+    CHECK(is_same<decay_t<int&&>, int>::value);
+    CHECK(is_same<decay_t<int[]>, int*>::value);
+    CHECK(is_same<decay_t<int[10]>, int*>::value);
+    CHECK(is_same<decay_t<decltype("toto")>, const char*>::value);
   }
 }
 

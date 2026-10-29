@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -53,16 +53,9 @@ struct Converter<JsonVariant> : private detail::VariantAttorney {
     return src;
   }
 
-  static detail::InvalidConversion<JsonVariantConst, JsonVariant> fromJson(
-      JsonVariantConst);
-
   static bool checkJson(JsonVariant src) {
     auto data = getData(src);
     return !!data;
-  }
-
-  static bool checkJson(JsonVariantConst) {
-    return false;
   }
 };
 

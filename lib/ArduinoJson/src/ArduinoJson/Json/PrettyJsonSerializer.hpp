@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -13,7 +13,7 @@ ARDUINOJSON_BEGIN_PRIVATE_NAMESPACE
 
 template <typename TWriter>
 class PrettyJsonSerializer : public JsonSerializer<TWriter> {
-  typedef JsonSerializer<TWriter> base;
+  using base = JsonSerializer<TWriter>;
 
  public:
   PrettyJsonSerializer(TWriter writer, const ResourceManager* resources)
@@ -26,7 +26,7 @@ class PrettyJsonSerializer : public JsonSerializer<TWriter> {
       nesting_++;
       while (!it.done()) {
         indent();
-        it->accept(*this);
+        it->accept(*this, base::resources_);
 
         it.next(base::resources_);
         base::write(it.done() ? "\r\n" : ",\r\n");
@@ -45,14 +45,17 @@ class PrettyJsonSerializer : public JsonSerializer<TWriter> {
     if (!it.done()) {
       base::write("{\r\n");
       nesting_++;
+      bool isKey = true;
       while (!it.done()) {
-        indent();
-        base::visit(it.key());
-        base::write(": ");
-        it->accept(*this);
-
+        if (isKey)
+          indent();
+        it->accept(*this, base::resources_);
         it.next(base::resources_);
-        base::write(it.done() ? "\r\n" : ",\r\n");
+        if (isKey)
+          base::write(": ");
+        else
+          base::write(it.done() ? "\r\n" : ",\r\n");
+        isKey = !isKey;
       }
       nesting_--;
       indent();
@@ -80,8 +83,11 @@ ARDUINOJSON_BEGIN_PUBLIC_NAMESPACE
 
 // Produces JsonDocument to create a prettified JSON document.
 // https://arduinojson.org/v7/api/json/serializejsonpretty/
-template <typename TDestination>
-size_t serializeJsonPretty(JsonVariantConst source, TDestination& destination) {
+template <
+    typename TDestination,
+    detail::enable_if_t<!detail::is_pointer<TDestination>::value, int> = 0>
+inline size_t serializeJsonPretty(JsonVariantConst source,
+                                  TDestination& destination) {
   using namespace ArduinoJson::detail;
   return serialize<PrettyJsonSerializer>(source, destination);
 }

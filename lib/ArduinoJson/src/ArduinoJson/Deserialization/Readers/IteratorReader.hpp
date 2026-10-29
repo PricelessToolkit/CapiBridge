@@ -1,8 +1,10 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #pragma once
+
+#include <ArduinoJson/Polyfills/type_traits.hpp>
 
 ARDUINOJSON_BEGIN_PRIVATE_NAMESPACE
 
@@ -29,13 +31,8 @@ class IteratorReader {
   }
 };
 
-template <typename T>
-struct void_ {
-  typedef void type;
-};
-
 template <typename TSource>
-struct Reader<TSource, typename void_<typename TSource::const_iterator>::type>
+struct Reader<TSource, void_t<typename TSource::const_iterator>>
     : IteratorReader<typename TSource::const_iterator> {
   explicit Reader(const TSource& source)
       : IteratorReader<typename TSource::const_iterator>(source.begin(),

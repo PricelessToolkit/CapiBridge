@@ -1,5 +1,5 @@
 # ArduinoJson - https://arduinojson.org
-# Copyright © 2014-2024, Benoit BLANCHON
+# Copyright © 2014-2026, Benoit BLANCHON
 # MIT License
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)")
@@ -16,9 +16,10 @@ endif()
 
 add_executable(DeprecatedTests
 	add.cpp
+	BasicJsonDocument.cpp
+	containsKey.cpp
 	createNestedArray.cpp
 	createNestedObject.cpp
-	BasicJsonDocument.cpp
 	DynamicJsonDocument.cpp
 	macros.cpp
 	memoryUsage.cpp

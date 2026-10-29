@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -19,8 +19,7 @@ template <typename T, typename Enable = void>
 struct Comparer;
 
 template <typename T>
-struct Comparer<T, typename enable_if<IsString<T>::value>::type>
-    : ComparerBase {
+struct Comparer<T, enable_if_t<IsString<T>::value>> : ComparerBase {
   T rhs;  // TODO: store adapted string?
 
   explicit Comparer(T value) : rhs(value) {}
@@ -46,30 +45,26 @@ struct Comparer<T, typename enable_if<IsString<T>::value>::type>
 };
 
 template <typename T>
-struct Comparer<T, typename enable_if<is_integral<T>::value ||
-                                      is_floating_point<T>::value>::type>
+struct Comparer<
+    T, enable_if_t<is_integral<T>::value || is_floating_point<T>::value>>
     : ComparerBase {
   T rhs;
 
   explicit Comparer(T value) : rhs(value) {}
 
-  CompareResult visit(JsonFloat lhs) {
+  template <typename U>
+  enable_if_t<is_floating_point<U>::value || is_integral<U>::value,
+              CompareResult>
+  visit(const U& lhs) {
     return arithmeticCompare(lhs, rhs);
   }
 
-  CompareResult visit(JsonInteger lhs) {
-    return arithmeticCompare(lhs, rhs);
+  template <typename U>
+  enable_if_t<!is_floating_point<U>::value && !is_integral<U>::value,
+              CompareResult>
+  visit(const U& lhs) {
+    return ComparerBase::visit(lhs);
   }
-
-  CompareResult visit(JsonUInt lhs) {
-    return arithmeticCompare(lhs, rhs);
-  }
-
-  CompareResult visit(bool lhs) {
-    return visit(static_cast<JsonUInt>(lhs));
-  }
-
-  using ComparerBase::visit;
 };
 
 struct NullComparer : ComparerBase {
@@ -200,8 +195,8 @@ struct VariantComparer : ComparerBase {
 };
 
 template <typename T>
-struct Comparer<T, typename enable_if<is_convertible<
-                       T, ArduinoJson::JsonVariantConst>::value>::type>
+struct Comparer<
+    T, enable_if_t<is_convertible<T, ArduinoJson::JsonVariantConst>::value>>
     : VariantComparer {
   explicit Comparer(const T& value)
       : VariantComparer(static_cast<JsonVariantConst>(value)) {}

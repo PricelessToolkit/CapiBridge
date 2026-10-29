@@ -1,10 +1,12 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
 #include <catch.hpp>
 #include "Allocators.hpp"
+
+#include "Literals.hpp"
 
 TEST_CASE("JsonVariant::set(JsonVariant)") {
   KillswitchAllocator killswitch;
@@ -72,7 +74,7 @@ TEST_CASE("JsonVariant::set(JsonVariant)") {
   }
 
   SECTION("stores std::string by copy") {
-    var1.set(std::string("hello!!"));
+    var1.set("hello!!"_s);
     spyingAllocator.clearLog();
 
     var2.set(var1);
@@ -106,7 +108,7 @@ TEST_CASE("JsonVariant::set(JsonVariant)") {
   }
 
   SECTION("stores Serialized<std::string> by copy") {
-    var1.set(serialized(std::string("hello!!")));
+    var1.set(serialized("hello!!"_s));
     spyingAllocator.clearLog();
 
     var2.set(var1);
@@ -117,7 +119,7 @@ TEST_CASE("JsonVariant::set(JsonVariant)") {
   }
 
   SECTION("fails gracefully if raw string allocation fails") {
-    var1.set(serialized(std::string("hello!!")));
+    var1.set(serialized("hello!!"_s));
     killswitch.on();
     spyingAllocator.clearLog();
 

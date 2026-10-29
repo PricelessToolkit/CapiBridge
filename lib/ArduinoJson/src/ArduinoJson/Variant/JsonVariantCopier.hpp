@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -11,7 +11,7 @@ ARDUINOJSON_BEGIN_PRIVATE_NAMESPACE
 
 class JsonVariantCopier {
  public:
-  typedef bool result_type;
+  using result_type = bool;
 
   JsonVariantCopier(JsonVariant dst) : dst_(dst) {}
 

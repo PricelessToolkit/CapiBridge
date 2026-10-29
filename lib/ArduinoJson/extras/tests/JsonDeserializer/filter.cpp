@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #define ARDUINOJSON_ENABLE_COMMENTS 1
@@ -10,6 +10,7 @@
 #include <string>
 
 #include "Allocators.hpp"
+#include "Literals.hpp"
 
 using ArduinoJson::detail::sizeofArray;
 using ArduinoJson::detail::sizeofObject;
@@ -692,6 +693,15 @@ TEST_CASE("Filtering") {
           "null",
           0,
       },
+      {
+          "NUL character in key",
+          "{\"x\":0,\"x\\u0000a\":1,\"x\\u0000b\":2}",
+          "{\"x\\u0000a\":true}",
+          10,
+          DeserializationError::Ok,
+          "{\"x\\u0000a\":1}",
+          sizeofObject(1) + sizeofString("x?a"),
+      },
   };
 
   for (auto& tc : testCases) {
@@ -732,7 +742,7 @@ TEST_CASE("Overloads") {
   }
 
   SECTION("const std::string&, Filter") {
-    deserializeJson(doc, std::string("{}"), Filter(filter));
+    deserializeJson(doc, "{}"_s, Filter(filter));
   }
 
   SECTION("std::istream&, Filter") {
@@ -760,7 +770,7 @@ TEST_CASE("Overloads") {
   }
 
   SECTION("const std::string&, Filter, NestingLimit") {
-    deserializeJson(doc, std::string("{}"), Filter(filter), NestingLimit(5));
+    deserializeJson(doc, "{}"_s, Filter(filter), NestingLimit(5));
   }
 
   SECTION("std::istream&, Filter, NestingLimit") {
@@ -788,7 +798,7 @@ TEST_CASE("Overloads") {
   }
 
   SECTION("const std::string&, NestingLimit, Filter") {
-    deserializeJson(doc, std::string("{}"), NestingLimit(5), Filter(filter));
+    deserializeJson(doc, "{}"_s, NestingLimit(5), Filter(filter));
   }
 
   SECTION("std::istream&, NestingLimit, Filter") {

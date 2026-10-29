@@ -1,5 +1,5 @@
 # ArduinoJson - https://arduinojson.org
-# Copyright © 2014-2024, Benoit BLANCHON
+# Copyright © 2014-2026, Benoit BLANCHON
 # MIT License
 
 add_executable(MixedConfigurationTests
@@ -15,6 +15,9 @@ add_executable(MixedConfigurationTests
 	enable_nan_1.cpp
 	enable_progmem_1.cpp
 	issue1707.cpp
+	string_length_size_1.cpp
+	string_length_size_2.cpp
+	string_length_size_4.cpp
 	use_double_0.cpp
 	use_double_1.cpp
 	use_long_long_0.cpp

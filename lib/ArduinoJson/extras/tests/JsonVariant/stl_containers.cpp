@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
@@ -99,7 +99,7 @@ TEST_CASE("vector<int>") {
 }
 
 TEST_CASE("array<int, 2>") {
-  typedef std::array<int, 2> array_type;
+  using array_type = std::array<int, 2>;
 
   SECTION("toJson") {
     array_type v;

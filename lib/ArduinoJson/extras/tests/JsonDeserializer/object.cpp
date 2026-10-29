@@ -1,11 +1,12 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
 #include <catch.hpp>
 
 #include "Allocators.hpp"
+#include "Literals.hpp"
 
 using ArduinoJson::detail::sizeofObject;
 
@@ -155,15 +156,27 @@ TEST_CASE("deserialize JSON object") {
       REQUIRE(obj["key2"] == -42);
     }
 
-    SECTION("Double") {
+    SECTION("Float") {
       DeserializationError err =
-          deserializeJson(doc, "{\"key1\":12.345,\"key2\":-7E89}");
+          deserializeJson(doc, "{\"key1\":12.345,\"key2\":-7E3}");
       JsonObject obj = doc.as<JsonObject>();
 
       REQUIRE(err == DeserializationError::Ok);
       REQUIRE(doc.is<JsonObject>());
       REQUIRE(obj.size() == 2);
-      REQUIRE(obj["key1"] == 12.345);
+      REQUIRE(obj["key1"].as<float>() == Approx(12.345f));
+      REQUIRE(obj["key2"] == -7E3f);
+    }
+
+    SECTION("Double") {
+      DeserializationError err =
+          deserializeJson(doc, "{\"key1\":12.3456789,\"key2\":-7E89}");
+      JsonObject obj = doc.as<JsonObject>();
+
+      REQUIRE(err == DeserializationError::Ok);
+      REQUIRE(doc.is<JsonObject>());
+      REQUIRE(obj.size() == 2);
+      REQUIRE(obj["key1"].as<double>() == Approx(12.3456789));
       REQUIRE(obj["key2"] == -7E89);
     }
 
@@ -279,22 +292,23 @@ TEST_CASE("deserialize JSON object") {
     }
 
     SECTION("Repeated key") {
-      DeserializationError err = deserializeJson(doc, "{a:{b:{c:1}},a:2}");
+      DeserializationError err =
+          deserializeJson(doc, "{alfa:{bravo:{charlie:1}},alfa:2}");
 
       REQUIRE(err == DeserializationError::Ok);
-      REQUIRE(doc.as<std::string>() == "{\"a\":2}");
+      REQUIRE(doc.as<std::string>() == "{\"alfa\":2}");
       REQUIRE(spy.log() ==
               AllocatorLog{
                   Allocate(sizeofStringBuffer()),
-                  Reallocate(sizeofStringBuffer(), sizeofString("a")),
                   Allocate(sizeofPool()),
+                  Reallocate(sizeofStringBuffer(), sizeofString("alfa")),
                   Allocate(sizeofStringBuffer()),
-                  Reallocate(sizeofStringBuffer(), sizeofString("b")),
+                  Reallocate(sizeofStringBuffer(), sizeofString("bravo")),
                   Allocate(sizeofStringBuffer()),
-                  Reallocate(sizeofStringBuffer(), sizeofString("c")),
+                  Reallocate(sizeofStringBuffer(), sizeofString("charlie")),
                   Allocate(sizeofStringBuffer()),
-                  Deallocate(sizeofString("b")),
-                  Deallocate(sizeofString("c")),
+                  Deallocate(sizeofString("bravo")),
+                  Deallocate(sizeofString("charlie")),
                   Deallocate(sizeofStringBuffer()),
                   Reallocate(sizeofPool(), sizeofObject(2) + sizeofObject(1)),
               });
@@ -308,12 +322,13 @@ TEST_CASE("deserialize JSON object") {
       REQUIRE(doc["a"] == 2);
     }
 
-    SECTION("NUL in keys") {  // we don't support NULs in keys
+    SECTION("NUL in keys") {
       DeserializationError err =
-          deserializeJson(doc, "{\"x\\u0000a\":1,\"x\\u0000b\":2}");
+          deserializeJson(doc, "{\"x\":0,\"x\\u0000a\":1,\"x\\u0000b\":2}");
 
       REQUIRE(err == DeserializationError::Ok);
-      REQUIRE(doc.as<std::string>() == "{\"x\":2}");
+      REQUIRE(doc.as<std::string>() ==
+              "{\"x\":0,\"x\\u0000a\":1,\"x\\u0000b\":2}");
     }
   }
 
@@ -364,7 +379,7 @@ TEST_CASE("deserialize JSON object under memory constraints") {
   }
 
   SECTION("pool allocation fails") {
-    timebomb.setCountdown(2);
+    timebomb.setCountdown(1);
     char input[] = "{\"a\":1}";
 
     DeserializationError err = deserializeJson(doc, input);
@@ -375,11 +390,11 @@ TEST_CASE("deserialize JSON object under memory constraints") {
 
   SECTION("string allocation fails") {
     timebomb.setCountdown(3);
-    char input[] = "{\"a\":\"b\"}";
+    char input[] = "{\"alfa\":\"bravo\"}";
 
     DeserializationError err = deserializeJson(doc, input);
 
     REQUIRE(err == DeserializationError::NoMemory);
-    REQUIRE(doc.as<std::string>() == "{\"a\":null}");
+    REQUIRE(doc.as<std::string>() == "{\"alfa\":null}");
   }
 }

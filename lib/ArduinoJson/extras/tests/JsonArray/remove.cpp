@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
@@ -68,6 +68,12 @@ TEST_CASE("JsonArray::remove()") {
     REQUIRE(array[1] == 2);
   }
 
+  SECTION("remove end()") {
+    array.remove(array.end());
+
+    REQUIRE(3 == array.size());
+  }
+
   SECTION("In a loop") {
     for (JsonArray::iterator it = array.begin(); it != array.end(); ++it) {
       if (*it == 2)
@@ -87,6 +93,15 @@ TEST_CASE("JsonArray::remove()") {
   SECTION("remove by iterator on unbound reference") {
     JsonArray unboundArray;
     unboundArray.remove(unboundArray.begin());
+  }
+
+  SECTION("use JsonVariant as index") {
+    array.remove(array[3]);  // no effect with null variant
+    array.remove(array[0]);  // remove element at index 1
+
+    REQUIRE(2 == array.size());
+    REQUIRE(array[0] == 1);
+    REQUIRE(array[1] == 3);
   }
 }
 

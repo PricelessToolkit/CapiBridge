@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
@@ -139,16 +139,4 @@ TEST_CASE("Custom converter with specialization") {
     REQUIRE(doc["value"]["real"] == 19);
     REQUIRE(doc["value"]["imag"] == 3);
   }
-}
-
-TEST_CASE("ConverterNeedsWriteableRef") {
-  using namespace ArduinoJson::detail;
-  CHECK(ConverterNeedsWriteableRef<int>::value == false);
-  CHECK(ConverterNeedsWriteableRef<float>::value == false);
-  CHECK(ConverterNeedsWriteableRef<JsonVariant>::value == true);
-  CHECK(ConverterNeedsWriteableRef<JsonVariantConst>::value == false);
-  CHECK(ConverterNeedsWriteableRef<JsonObject>::value == true);
-  CHECK(ConverterNeedsWriteableRef<JsonObjectConst>::value == false);
-  CHECK(ConverterNeedsWriteableRef<JsonArray>::value == true);
-  CHECK(ConverterNeedsWriteableRef<JsonArrayConst>::value == false);
 }

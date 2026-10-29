@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -34,7 +34,8 @@ class JsonObjectIterator {
   }
 
   JsonObjectIterator& operator++() {
-    iterator_.next(resources_);
+    iterator_.next(resources_);  // key
+    iterator_.next(resources_);  // value
     return *this;
   }
 
@@ -69,7 +70,8 @@ class JsonObjectConstIterator {
   }
 
   JsonObjectConstIterator& operator++() {
-    iterator_.next(resources_);
+    iterator_.next(resources_);  // key
+    iterator_.next(resources_);  // value
     return *this;
   }
 

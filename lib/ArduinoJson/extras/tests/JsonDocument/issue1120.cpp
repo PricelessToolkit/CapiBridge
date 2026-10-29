@@ -2,6 +2,8 @@
 
 #include <catch.hpp>
 
+#include "Literals.hpp"
+
 TEST_CASE("Issue #1120") {
   JsonDocument doc;
   constexpr char str[] =
@@ -10,49 +12,41 @@ TEST_CASE("Issue #1120") {
 
   SECTION("MemberProxy<std::string>::isNull()") {
     SECTION("returns false") {
-      auto value = doc[std::string("contents")];
-      CHECK(value.isNull() == false);
+      CHECK(doc["contents"_s].isNull() == false);
     }
 
     SECTION("returns true") {
-      auto value = doc[std::string("zontents")];
-      CHECK(value.isNull() == true);
+      CHECK(doc["zontents"_s].isNull() == true);
     }
   }
 
   SECTION("ElementProxy<MemberProxy<const char*> >::isNull()") {
     SECTION("returns false") {  // Issue #1120
-      auto value = doc["contents"][1];
-      CHECK(value.isNull() == false);
+      CHECK(doc["contents"][1].isNull() == false);
     }
 
     SECTION("returns true") {
-      auto value = doc["contents"][2];
-      CHECK(value.isNull() == true);
+      CHECK(doc["contents"][2].isNull() == true);
     }
   }
 
   SECTION("MemberProxy<ElementProxy<MemberProxy>, const char*>::isNull()") {
     SECTION("returns false") {
-      auto value = doc["contents"][1]["module"];
-      CHECK(value.isNull() == false);
+      CHECK(doc["contents"][1]["module"].isNull() == false);
     }
 
     SECTION("returns true") {
-      auto value = doc["contents"][1]["zodule"];
-      CHECK(value.isNull() == true);
+      CHECK(doc["contents"][1]["zodule"].isNull() == true);
     }
   }
 
   SECTION("MemberProxy<ElementProxy<MemberProxy>, std::string>::isNull()") {
     SECTION("returns false") {
-      auto value = doc["contents"][1][std::string("module")];
-      CHECK(value.isNull() == false);
+      CHECK(doc["contents"][1]["module"_s].isNull() == false);
     }
 
     SECTION("returns true") {
-      auto value = doc["contents"][1][std::string("zodule")];
-      CHECK(value.isNull() == true);
+      CHECK(doc["contents"][1]["zodule"_s].isNull() == true);
     }
   }
 }

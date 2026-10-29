@@ -1,9 +1,8 @@
 # ArduinoJson - https://arduinojson.org
-# Copyright © 2014-2024, Benoit BLANCHON
+# Copyright © 2014-2026, Benoit BLANCHON
 # MIT License
 
 add_executable(JsonObjectConstTests
-	containsKey.cpp
 	equals.cpp
 	isNull.cpp
 	iterator.cpp

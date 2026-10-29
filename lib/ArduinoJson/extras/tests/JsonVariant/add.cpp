@@ -1,10 +1,13 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
 #include <stdint.h>
 #include <catch.hpp>
+
+#include "Allocators.hpp"
+#include "Literals.hpp"
 
 TEST_CASE("JsonVariant::add(T)") {
   JsonDocument doc;
@@ -23,7 +26,7 @@ TEST_CASE("JsonVariant::add(T)") {
   }
 
   SECTION("add std::string to new variant") {
-    var.add(std::string("hello"));
+    var.add("hello"_s);
 
     REQUIRE(var.as<std::string>() == "[\"hello\"]");
   }
@@ -43,6 +46,18 @@ TEST_CASE("JsonVariant::add(T)") {
 
     REQUIRE(var.as<std::string>() == "{\"val\":123}");
   }
+
+#ifdef HAS_VARIABLE_LENGTH_ARRAY
+  SECTION("supports VLAs") {
+    size_t i = 16;
+    char vla[i];
+    strcpy(vla, "hello");
+
+    var.add(vla);
+
+    REQUIRE(var.as<std::string>() == "[\"hello\"]");
+  }
+#endif
 }
 
 TEST_CASE("JsonVariant::add<T>()") {
@@ -56,15 +71,58 @@ TEST_CASE("JsonVariant::add<T>()") {
     REQUIRE(doc.as<std::string>() == "[[1,2]]");
   }
 
-  SECTION("JsonObject") {
-    JsonObject object = var.add<JsonObject>();
-    object["hello"] = "world";
-    REQUIRE(doc.as<std::string>() == "[{\"hello\":\"world\"}]");
-  }
-
   SECTION("JsonVariant") {
     JsonVariant variant = var.add<JsonVariant>();
     variant.set(42);
     REQUIRE(doc.as<std::string>() == "[42]");
+  }
+}
+
+TEST_CASE("JsonObject::add(JsonObject) ") {
+  JsonDocument doc1;
+  doc1["hello"_s] = "world"_s;
+
+  TimebombAllocator allocator(10);
+  SpyingAllocator spy(&allocator);
+  JsonDocument doc2(&spy);
+  JsonVariant variant = doc2.to<JsonVariant>();
+
+  SECTION("success") {
+    bool result = variant.add(doc1.as<JsonObject>());
+
+    REQUIRE(result == true);
+    REQUIRE(doc2.as<std::string>() == "[{\"hello\":\"world\"}]");
+    REQUIRE(spy.log() == AllocatorLog{
+                             Allocate(sizeofPool()),
+                             Allocate(sizeofString("hello")),
+                             Allocate(sizeofString("world")),
+                         });
+  }
+
+  SECTION("partial failure") {  // issue #2081
+    allocator.setCountdown(2);
+
+    bool result = variant.add(doc1.as<JsonObject>());
+
+    REQUIRE(result == false);
+    REQUIRE(doc2.as<std::string>() == "[]");
+    REQUIRE(spy.log() == AllocatorLog{
+                             Allocate(sizeofPool()),
+                             Allocate(sizeofString("hello")),
+                             AllocateFail(sizeofString("world")),
+                             Deallocate(sizeofString("hello")),
+                         });
+  }
+
+  SECTION("complete failure") {
+    allocator.setCountdown(0);
+
+    bool result = variant.add(doc1.as<JsonObject>());
+
+    REQUIRE(result == false);
+    REQUIRE(doc2.as<std::string>() == "[]");
+    REQUIRE(spy.log() == AllocatorLog{
+                             AllocateFail(sizeofPool()),
+                         });
   }
 }

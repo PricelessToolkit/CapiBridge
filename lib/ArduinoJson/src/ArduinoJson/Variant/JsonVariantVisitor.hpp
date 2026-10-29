@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -13,7 +13,7 @@ ARDUINOJSON_BEGIN_PRIVATE_NAMESPACE
 
 template <typename TResult>
 struct JsonVariantVisitor {
-  typedef TResult result_type;
+  using result_type = TResult;
 
   template <typename T>
   TResult visit(const T&) {
@@ -55,7 +55,7 @@ typename TVisitor::result_type accept(JsonVariantConst variant,
     return visit.visit(nullptr);
   auto resources = VariantAttorney::getResourceManager(variant);
   VisitorAdapter<TVisitor> adapter(visit, resources);
-  return data->accept(adapter);
+  return data->accept(adapter, resources);
 }
 
 ARDUINOJSON_END_PRIVATE_NAMESPACE

@@ -1,11 +1,13 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
 #include <catch.hpp>
 
 #include <string>
+
+#include "Literals.hpp"
 
 TEST_CASE("JsonDocument::createNestedArray()") {
   JsonDocument doc;
@@ -23,7 +25,7 @@ TEST_CASE("JsonDocument::createNestedArray()") {
   }
 
   SECTION("createNestedArray(std::string)") {
-    JsonArray array = doc.createNestedArray(std::string("key"));
+    JsonArray array = doc.createNestedArray("key"_s);
     array.add(42);
     REQUIRE(doc.as<std::string>() == "{\"key\":[42]}");
   }
@@ -59,7 +61,7 @@ TEST_CASE("JsonObject::createNestedArray()") {
   }
 
   SECTION("createNestedArray(std::string)") {
-    JsonArray array = object.createNestedArray(std::string("key"));
+    JsonArray array = object.createNestedArray("key"_s);
     array.add(42);
     REQUIRE(doc.as<std::string>() == "{\"key\":[42]}");
   }
@@ -93,7 +95,7 @@ TEST_CASE("JsonVariant::createNestedArray()") {
   }
 
   SECTION("createNestedArray(std::string)") {
-    JsonArray array = variant.createNestedArray(std::string("key"));
+    JsonArray array = variant.createNestedArray("key"_s);
     array.add(42);
     REQUIRE(doc.as<std::string>() == "{\"key\":[42]}");
   }

@@ -1,9 +1,11 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
 #include <catch.hpp>
+
+#include "Literals.hpp"
 
 #if defined(__clang__)
 #  define CONFLICTS_WITH_BUILTIN_OPERATOR
@@ -111,7 +113,7 @@ TEST_CASE("unsigned char[]") {
       deserializeJson(doc, "{\"hello\":\"world\"}");
       JsonVariant variant = doc.as<JsonVariant>();
 
-      REQUIRE(std::string("world") == variant[key]);
+      REQUIRE("world"_s == variant[key]);
     }
 #endif
 
@@ -122,7 +124,7 @@ TEST_CASE("unsigned char[]") {
       deserializeJson(doc, "{\"hello\":\"world\"}");
       const JsonVariant variant = doc.as<JsonVariant>();
 
-      REQUIRE(std::string("world") == variant[key]);
+      REQUIRE("world"_s == variant[key]);
     }
 #endif
 
@@ -160,7 +162,7 @@ TEST_CASE("unsigned char[]") {
       JsonObject obj = doc.to<JsonObject>();
       obj[key] = "world";
 
-      REQUIRE(std::string("world") == obj["hello"]);
+      REQUIRE("world"_s == obj["hello"]);
     }
 
     SECTION("JsonObject::operator[] const") {
@@ -170,18 +172,9 @@ TEST_CASE("unsigned char[]") {
       deserializeJson(doc, "{\"hello\":\"world\"}");
 
       JsonObject obj = doc.as<JsonObject>();
-      REQUIRE(std::string("world") == obj[key]);
+      REQUIRE("world"_s == obj[key]);
     }
 #endif
-
-    SECTION("containsKey()") {
-      unsigned char key[] = "hello";
-
-      JsonDocument doc;
-      deserializeJson(doc, "{\"hello\":\"world\"}");
-      JsonObject obj = doc.as<JsonObject>();
-      REQUIRE(true == obj.containsKey(key));
-    }
 
     SECTION("remove()") {
       unsigned char key[] = "hello";
@@ -203,7 +196,7 @@ TEST_CASE("unsigned char[]") {
       JsonObject obj = doc.to<JsonObject>();
       obj["hello"] = value;
 
-      REQUIRE(std::string("world") == obj["hello"]);
+      REQUIRE("world"_s == obj["hello"]);
     }
 
     SECTION("set()") {
@@ -213,7 +206,7 @@ TEST_CASE("unsigned char[]") {
       JsonObject obj = doc.to<JsonObject>();
       obj["hello"].set(value);
 
-      REQUIRE(std::string("world") == obj["hello"]);
+      REQUIRE("world"_s == obj["hello"]);
     }
   }
 
@@ -225,7 +218,7 @@ TEST_CASE("unsigned char[]") {
       JsonArray arr = doc.to<JsonArray>();
       arr.add(value);
 
-      REQUIRE(std::string("world") == arr[0]);
+      REQUIRE("world"_s == arr[0]);
     }
   }
 
@@ -238,7 +231,7 @@ TEST_CASE("unsigned char[]") {
       arr.add("hello");
       arr[0].set(value);
 
-      REQUIRE(std::string("world") == arr[0]);
+      REQUIRE("world"_s == arr[0]);
     }
 
     SECTION("operator=") {
@@ -249,7 +242,7 @@ TEST_CASE("unsigned char[]") {
       arr.add("hello");
       arr[0] = value;
 
-      REQUIRE(std::string("world") == arr[0]);
+      REQUIRE("world"_s == arr[0]);
     }
   }
 }

@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #define ARDUINOJSON_DECODE_UNICODE 1
@@ -83,6 +83,22 @@ TEST_CASE("Truncated JSON string") {
   }
 }
 
+TEST_CASE("Escape single quote in single quoted string") {
+  JsonDocument doc;
+
+  DeserializationError err = deserializeJson(doc, "'ab\\\'cd'");
+  REQUIRE(err == DeserializationError::Ok);
+  CHECK(doc.as<std::string>() == "ab\'cd");
+}
+
+TEST_CASE("Escape double quote in double quoted string") {
+  JsonDocument doc;
+
+  DeserializationError err = deserializeJson(doc, "'ab\\\"cd'");
+  REQUIRE(err == DeserializationError::Ok);
+  CHECK(doc.as<std::string>() == "ab\"cd");
+}
+
 TEST_CASE("Invalid JSON string") {
   const char* testCases[] = {"'\\u'",     "'\\u000g'", "'\\u000'",
                              "'\\u000G'", "'\\u000/'", "'\\x1234'"};
@@ -117,8 +133,8 @@ TEST_CASE("Allocation of the key fails") {
     REQUIRE(spy.log() ==
             AllocatorLog{
                 Allocate(sizeofStringBuffer()),
-                Reallocate(sizeofStringBuffer(), sizeofString("hello")),
                 Allocate(sizeofPool()),
+                Reallocate(sizeofStringBuffer(), sizeofString("hello")),
                 AllocateFail(sizeofStringBuffer()),
                 ReallocateFail(sizeofPool(), sizeofObject(1)),
             });
@@ -139,8 +155,8 @@ TEST_CASE("Allocation of the key fails") {
     REQUIRE(spy.log() ==
             AllocatorLog{
                 Allocate(sizeofStringBuffer()),
-                Reallocate(sizeofStringBuffer(), sizeofString("hello")),
                 Allocate(sizeofPool()),
+                Reallocate(sizeofStringBuffer(), sizeofString("hello")),
                 AllocateFail(sizeofStringBuffer()),
                 ReallocateFail(sizeofPool(), sizeofObject(1)),
             });

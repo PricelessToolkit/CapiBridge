@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -11,9 +11,6 @@
 #include <ArduinoJson/Strings/StringAdapters.hpp>
 
 ARDUINOJSON_BEGIN_PRIVATE_NAMESPACE
-
-class VariantSlot;
-class VariantPool;
 
 class StringPool {
  public:

@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
@@ -9,6 +9,7 @@
 #include <string>
 
 #include "Allocators.hpp"
+#include "Literals.hpp"
 
 using ArduinoJson::detail::sizeofArray;
 using ArduinoJson::detail::sizeofObject;
@@ -78,7 +79,7 @@ TEST_CASE("JsonDocument::shrinkToFit()") {
   }
 
   SECTION("owned string") {
-    doc.set(std::string("abcdefg"));
+    doc.set("abcdefg"_s);
     REQUIRE(doc.as<std::string>() == "abcdefg");
 
     doc.shrinkToFit();
@@ -114,15 +115,15 @@ TEST_CASE("JsonDocument::shrinkToFit()") {
   }
 
   SECTION("owned key") {
-    doc[std::string("abcdefg")] = 42;
+    doc["abcdefg"_s] = 42;
 
     doc.shrinkToFit();
 
     REQUIRE(doc.as<std::string>() == "{\"abcdefg\":42}");
     REQUIRE(spyingAllocator.log() ==
             AllocatorLog{
-                Allocate(sizeofString("abcdefg")),
                 Allocate(sizeofPool()),
+                Allocate(sizeofString("abcdefg")),
                 Reallocate(sizeofPool(), sizeofObject(1)),
             });
   }
@@ -141,7 +142,7 @@ TEST_CASE("JsonDocument::shrinkToFit()") {
   }
 
   SECTION("owned string in array") {
-    doc.add(std::string("abcdefg"));
+    doc.add("abcdefg"_s);
 
     doc.shrinkToFit();
 
@@ -168,7 +169,7 @@ TEST_CASE("JsonDocument::shrinkToFit()") {
   }
 
   SECTION("owned string in object") {
-    doc["key"] = std::string("abcdefg");
+    doc["key"] = "abcdefg"_s;
 
     doc.shrinkToFit();
 
@@ -177,7 +178,7 @@ TEST_CASE("JsonDocument::shrinkToFit()") {
             AllocatorLog{
                 Allocate(sizeofPool()),
                 Allocate(sizeofString("abcdefg")),
-                Reallocate(sizeofPool(), sizeofPool(1)),
+                Reallocate(sizeofPool(), sizeofPool(2)),
             });
   }
 }

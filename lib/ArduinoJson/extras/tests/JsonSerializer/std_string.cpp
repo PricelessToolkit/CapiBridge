@@ -1,9 +1,11 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
 #include <catch.hpp>
+
+#include "Literals.hpp"
 
 TEST_CASE("serialize JsonArray to std::string") {
   JsonDocument doc;
@@ -48,7 +50,7 @@ TEST_CASE("serialize JsonObject to std::string") {
 
 TEST_CASE("serialize an std::string containing a NUL") {
   JsonDocument doc;
-  doc.set(std::string("hello\0world", 11));
+  doc.set("hello\0world"_s);
 
   std::string json = "erase me";
   serializeJson(doc, json);

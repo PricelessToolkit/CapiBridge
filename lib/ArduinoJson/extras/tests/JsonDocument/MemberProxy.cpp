@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #define ARDUINOJSON_ENABLE_ARDUINO_STRING 1
@@ -9,33 +9,77 @@
 #include <catch.hpp>
 
 #include "Allocators.hpp"
+#include "Literals.hpp"
 
 using ArduinoJson::detail::sizeofArray;
 using ArduinoJson::detail::sizeofObject;
 
-typedef ArduinoJson::detail::MemberProxy<JsonDocument&, const char*>
-    MemberProxy;
-
 TEST_CASE("MemberProxy::add()") {
-  JsonDocument doc;
-  MemberProxy mp = doc["hello"];
+  SpyingAllocator spy;
+  JsonDocument doc(&spy);
+  const auto& mp = doc["hello"];
 
-  SECTION("add(int)") {
+  SECTION("integer") {
     mp.add(42);
 
     REQUIRE(doc.as<std::string>() == "{\"hello\":[42]}");
+    REQUIRE(spy.log() == AllocatorLog{
+                             Allocate(sizeofPool()),
+                         });
   }
 
-  SECTION("add(const char*)") {
+  SECTION("string literal") {
     mp.add("world");
 
     REQUIRE(doc.as<std::string>() == "{\"hello\":[\"world\"]}");
+    REQUIRE(spy.log() == AllocatorLog{
+                             Allocate(sizeofPool()),
+                         });
   }
+
+  SECTION("const char*") {
+    const char* temp = "world";
+    mp.add(temp);
+
+    REQUIRE(doc.as<std::string>() == "{\"hello\":[\"world\"]}");
+    REQUIRE(spy.log() == AllocatorLog{
+                             Allocate(sizeofPool()),
+                             Allocate(sizeofString("world")),
+                         });
+  }
+
+  SECTION("char[]") {
+    char temp[] = "world";
+    mp.add(temp);
+
+    REQUIRE(doc.as<std::string>() == "{\"hello\":[\"world\"]}");
+    REQUIRE(spy.log() == AllocatorLog{
+                             Allocate(sizeofPool()),
+                             Allocate(sizeofString("world")),
+
+                         });
+  }
+
+#ifdef HAS_VARIABLE_LENGTH_ARRAY
+  SECTION("VLA") {
+    size_t i = 16;
+    char vla[i];
+    strcpy(vla, "world");
+
+    mp.add(vla);
+
+    REQUIRE(doc.as<std::string>() == "{\"hello\":[\"world\"]}");
+    REQUIRE(spy.log() == AllocatorLog{
+                             Allocate(sizeofPool()),
+                             Allocate(sizeofString("world")),
+                         });
+  }
+#endif
 }
 
 TEST_CASE("MemberProxy::clear()") {
   JsonDocument doc;
-  MemberProxy mp = doc["hello"];
+  const auto& mp = doc["hello"];
 
   SECTION("size goes back to zero") {
     mp.add(42);
@@ -92,33 +136,14 @@ TEST_CASE("MemberProxy::operator==()") {
   }
 }
 
-TEST_CASE("MemberProxy::containsKey()") {
-  JsonDocument doc;
-  MemberProxy mp = doc["hello"];
-
-  SECTION("containsKey(const char*)") {
-    mp["key"] = "value";
-
-    REQUIRE(mp.containsKey("key") == true);
-    REQUIRE(mp.containsKey("key") == true);
-  }
-
-  SECTION("containsKey(std::string)") {
-    mp["key"] = "value";
-
-    REQUIRE(mp.containsKey(std::string("key")) == true);
-    REQUIRE(mp.containsKey(std::string("key")) == true);
-  }
-}
-
 TEST_CASE("MemberProxy::operator|()") {
   JsonDocument doc;
 
   SECTION("const char*") {
     doc["a"] = "hello";
 
-    REQUIRE((doc["a"] | "world") == std::string("hello"));
-    REQUIRE((doc["b"] | "world") == std::string("world"));
+    REQUIRE((doc["a"] | "world") == "hello"_s);
+    REQUIRE((doc["b"] | "world") == "world"_s);
   }
 
   SECTION("Issue #1411") {
@@ -128,7 +153,7 @@ TEST_CASE("MemberProxy::operator|()") {
                                 // to trigger the bug
     const char* sensor = doc["sensor"] | test;  // "gps"
 
-    REQUIRE(sensor == std::string("gps"));
+    REQUIRE(sensor == "gps"_s);
   }
 
   SECTION("Issue #1415") {
@@ -145,7 +170,7 @@ TEST_CASE("MemberProxy::operator|()") {
 
 TEST_CASE("MemberProxy::remove()") {
   JsonDocument doc;
-  MemberProxy mp = doc["hello"];
+  const auto& mp = doc["hello"];
 
   SECTION("remove(int)") {
     mp.add(1);
@@ -170,7 +195,7 @@ TEST_CASE("MemberProxy::remove()") {
     mp["a"] = 1;
     mp["b"] = 2;
 
-    mp.remove(std::string("b"));
+    mp.remove("b"_s);
 
     REQUIRE(mp.as<std::string>() == "{\"a\":1}");
   }
@@ -192,7 +217,7 @@ TEST_CASE("MemberProxy::remove()") {
 
 TEST_CASE("MemberProxy::set()") {
   JsonDocument doc;
-  MemberProxy mp = doc["hello"];
+  const auto& mp = doc["hello"];
 
   SECTION("set(int)") {
     mp.set(42);
@@ -213,11 +238,23 @@ TEST_CASE("MemberProxy::set()") {
 
     REQUIRE(doc.as<std::string>() == "{\"hello\":\"world\"}");
   }
+
+#ifdef HAS_VARIABLE_LENGTH_ARRAY
+  SECTION("set(vla)") {
+    size_t i = 8;
+    char vla[i];
+    strcpy(vla, "world");
+
+    mp.set(vla);
+
+    REQUIRE(doc.as<std::string>() == "{\"hello\":\"world\"}");
+  }
+#endif
 }
 
 TEST_CASE("MemberProxy::size()") {
   JsonDocument doc;
-  MemberProxy mp = doc["hello"];
+  const auto& mp = doc["hello"];
 
   SECTION("returns 0") {
     REQUIRE(mp.size() == 0);
@@ -240,7 +277,7 @@ TEST_CASE("MemberProxy::size()") {
 
 TEST_CASE("MemberProxy::operator[]") {
   JsonDocument doc;
-  MemberProxy mp = doc["hello"];
+  const auto& mp = doc["hello"];
 
   SECTION("set member") {
     mp["world"] = 42;
@@ -259,7 +296,7 @@ TEST_CASE("MemberProxy cast to JsonVariantConst") {
   JsonDocument doc;
   doc["hello"] = "world";
 
-  const MemberProxy mp = doc["hello"];
+  const auto& mp = doc["hello"];
 
   JsonVariantConst var = mp;
 
@@ -270,7 +307,7 @@ TEST_CASE("MemberProxy cast to JsonVariant") {
   JsonDocument doc;
   doc["hello"] = "world";
 
-  MemberProxy mp = doc["hello"];
+  const auto& mp = doc["hello"];
 
   JsonVariant var = mp;
 
@@ -286,8 +323,8 @@ TEST_CASE("Deduplicate keys") {
   JsonDocument doc(&spy);
 
   SECTION("std::string") {
-    doc[0][std::string("example")] = 1;
-    doc[1][std::string("example")] = 2;
+    doc[0]["example"_s] = 1;
+    doc[1]["example"_s] = 2;
 
     const char* key1 = doc[0].as<JsonObject>().begin()->key().c_str();
     const char* key2 = doc[1].as<JsonObject>().begin()->key().c_str();
@@ -344,19 +381,51 @@ TEST_CASE("Deduplicate keys") {
 }
 
 TEST_CASE("MemberProxy under memory constraints") {
-  KillswitchAllocator killswitch;
-  SpyingAllocator spy(&killswitch);
+  TimebombAllocator timebomb(1);
+  SpyingAllocator spy(&timebomb);
   JsonDocument doc(&spy);
 
-  SECTION("key allocation fails") {
-    killswitch.on();
+  SECTION("key slot allocation fails") {
+    timebomb.setCountdown(0);
 
-    doc[std::string("hello")] = "world";
+    doc["hello"_s] = "world";
 
     REQUIRE(doc.is<JsonObject>());
     REQUIRE(doc.size() == 0);
     REQUIRE(doc.overflowed() == true);
     REQUIRE(spy.log() == AllocatorLog{
+                             AllocateFail(sizeofPool()),
+                         });
+  }
+
+  SECTION("value slot allocation fails") {
+    timebomb.setCountdown(1);
+
+    // fill the pool entirely, but leave one slot for the key
+    doc["foo"][ARDUINOJSON_POOL_CAPACITY - 4] = 1;
+    REQUIRE(doc.overflowed() == false);
+
+    doc["hello"_s] = "world";
+
+    REQUIRE(doc.is<JsonObject>());
+    REQUIRE(doc.size() == 1);
+    REQUIRE(doc.overflowed() == true);
+    REQUIRE(spy.log() == AllocatorLog{
+                             Allocate(sizeofPool()),
+                             AllocateFail(sizeofPool()),
+                         });
+  }
+
+  SECTION("key string allocation fails") {
+    timebomb.setCountdown(1);
+
+    doc["hello"_s] = "world";
+
+    REQUIRE(doc.is<JsonObject>());
+    REQUIRE(doc.size() == 0);
+    REQUIRE(doc.overflowed() == true);
+    REQUIRE(spy.log() == AllocatorLog{
+                             Allocate(sizeofPool()),
                              AllocateFail(sizeofString("hello")),
                          });
   }

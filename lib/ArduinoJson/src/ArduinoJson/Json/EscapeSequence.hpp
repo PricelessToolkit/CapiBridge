@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -32,8 +32,8 @@ class EscapeSequence {
   }
 
  private:
-  static const char* escapeTable(bool excludeSolidus) {
-    return &"//\"\"\\\\b\bf\fn\nr\rt\t"[excludeSolidus ? 2 : 0];
+  static const char* escapeTable(bool isSerializing) {
+    return &"//''\"\"\\\\b\bf\fn\nr\rt\t"[isSerializing ? 4 : 0];
   }
 };
 

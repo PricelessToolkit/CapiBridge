@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #include <ArduinoJson.h>
@@ -104,6 +104,42 @@ TEST_CASE("Compare JsonVariant with JsonVariant") {
   SECTION("serialized('bcd') vs serialized('abc')") {
     a.set(serialized("bcd"));
     b.set(serialized("abc"));
+
+    CHECK(a != b);
+    CHECK(a > b);
+    CHECK(a >= b);
+    CHECK_FALSE(a < b);
+    CHECK_FALSE(a <= b);
+    CHECK_FALSE(a == b);
+  }
+
+  SECTION("MsgPackBinary('abc') vs MsgPackBinary('abc')") {
+    a.set(MsgPackBinary("abc", 4));
+    b.set(MsgPackBinary("abc", 4));
+
+    CHECK(a == b);
+    CHECK(a <= b);
+    CHECK(a >= b);
+    CHECK_FALSE(a != b);
+    CHECK_FALSE(a < b);
+    CHECK_FALSE(a > b);
+  }
+
+  SECTION("MsgPackBinary('abc') vs MsgPackBinary('bcd')") {
+    a.set(MsgPackBinary("abc", 4));
+    b.set(MsgPackBinary("bcd", 4));
+
+    CHECK(a != b);
+    CHECK(a < b);
+    CHECK(a <= b);
+    CHECK_FALSE(a == b);
+    CHECK_FALSE(a > b);
+    CHECK_FALSE(a >= b);
+  }
+
+  SECTION("MsgPackBinary('bcd') vs MsgPackBinary('abc')") {
+    a.set(MsgPackBinary("bcd", 4));
+    b.set(MsgPackBinary("abc", 4));
 
     CHECK(a != b);
     CHECK(a > b);

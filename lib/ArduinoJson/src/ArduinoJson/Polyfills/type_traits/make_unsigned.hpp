@@ -1,5 +1,5 @@
 // ArduinoJson - https://arduinojson.org
-// Copyright © 2014-2024, Benoit BLANCHON
+// Copyright © 2014-2026, Benoit BLANCHON
 // MIT License
 
 #pragma once
@@ -37,5 +37,8 @@ template <>
 struct make_unsigned<signed long long> : type_identity<unsigned long long> {};
 template <>
 struct make_unsigned<unsigned long long> : type_identity<unsigned long long> {};
+
+template <typename T>
+using make_unsigned_t = typename make_unsigned<T>::type;
 
 ARDUINOJSON_END_PRIVATE_NAMESPACE
