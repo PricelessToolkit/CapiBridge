@@ -78,7 +78,7 @@ void onReceive() { packetReceived = true; }
 #define AVAIL_ON  "online"
 #define AVAIL_OFF "offline"
 
-const char* FIRMWARE_VERSION = "V1.3";
+const char* FIRMWARE_VERSION = "V1.3.1";
 
 // Global gateway state shared across setup, loop, radio handling, MQTT, and the web API.
 RuntimeRadio radio;
@@ -863,7 +863,7 @@ void handleGetTraffic() {
   if (!ensureWebUiAuth()) {
     return;
   }
-  StaticJsonDocument<24576> doc;
+  DynamicJsonDocument doc(24576);
   JsonArray items = doc.createNestedArray("items");
   for (const auto& entry : trafficLog) {
     JsonObject item = items.createNestedObject();

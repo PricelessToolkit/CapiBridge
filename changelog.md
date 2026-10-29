@@ -1,8 +1,12 @@
-## Latest Update "18.04.2026"
-
-- Web UI added
-  - Runtime settings page added
-  - Dark and light theme toggle added
-  - Prettified payloads view added
-  - Raw View live terminal added
-
+- 29.10.2026
+  - Fixed WebUI Monitoring page crash with ArduinoJson 6 ([#30](https://github.com/PricelessToolkit/CapiBridge/issues/30)).
+- 28.10.2026
+  - Fixed LoRa reception stopping on SX1262/SX1268 ([#29](https://github.com/PricelessToolkit/CapiBridge/issues/29)).
+  - Fixed encrypted ESP-NOW commands.
+  - Fixed MQTT commands with spaces in JSON (LoRa and ESP-NOW).
+  - **Breaking Change:** Update both ESP1 and ESP2 firmware together.
+- 17.04.2026
+  - WebUI for configuration and monitoring.
+- 28.03.2026
+  - Added support for "Ra-01S" 433Mhz Module.
+  - `#define LORA_MODULE LORA_MODULE_SX1268    // Ra-01S 433Mhz Module "433Mhz Version" Module CapiBridge v2`
