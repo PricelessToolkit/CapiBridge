@@ -153,23 +153,6 @@ ____________
 
 ```
 
-## ESP1 browser firmware updates (OTA)
-
-After installing this OTA-capable ESP1 sketch once over USB, open the Web UI and go to **Settings → Firmware**. Choose the ESP1 application `.bin`, then click **Upload firmware**. The page shows upload progress, waits for verification, and reconnects after the gateway restarts. Save and apply settings edits before starting an update. Keep power connected throughout the update.
-
-- In Arduino IDE, use **Sketch → Export Compiled Binary**. Select `ESP1.ino.bin`; do not select `.merged.bin`, `.bootloader.bin`, `.partitions.bin`, or an ESP2 binary. Keep the original ESP1 sketch name. Images must contain the CapiBridge ESP1 OTA identity included in this implementation; older firmware without it is rejected.
-- The updater writes only the spare application partition. It checks file size, ESP32-C3 image header, ESP1 identity, and complete-image verification before selecting the new firmware for boot. Interrupted or rejected uploads do not activate the uploaded image. The identity check prevents accidental wrong-image uploads; it is not a digital signature.
-- Before writing firmware, the gateway saves and reads back its current configuration, including values originally supplied through `config.h`. Wi-Fi, MQTT, radio settings, and keys therefore survive a generic firmware update. Existing version-1 saved settings remain compatible; future schema changes must implement migration.
-- The Web UI username/password are stored separately on the first boot of this implementation and reused across updates. Changing their `config.h` defaults afterward does not replace the saved login. **Restore Defaults** resets gateway settings but retains this login. Erasing NVS over USB removes both settings and the saved login.
-- Updates use the existing Web UI authentication. If `WEBUI_PASSWORD` is empty on initial installation, authentication remains disabled. Use the updater on a trusted local network.
-- ESP1 OTA does not update ESP2. ESP2 still requires USB flashing when its firmware changes.
-
-Use **Tools → Partition Scheme → Minimal SPIFFS (1.9MB APP with OTA/128KB SPIFFS)** for new USB installations. It provides two 1,966,080-byte firmware slots. CapiBridge embeds its Web UI in firmware and does not use SPIFFS, so the smaller filesystem leaves more space for future firmware. The older default 4 MB scheme remains compatible but reserves only 1,310,720 bytes per firmware slot. If there is no spare slot, install an OTA-capable partition scheme over USB first. Changing the partition layout is a USB maintenance operation, not a browser update; back up the configuration before doing so. Do not enable **Erase All Flash** when preserving settings.
-
-A first USB installation using a generic binary cannot recover client values that existed only in the old compiled firmware. For these devices, install this implementation with the client's existing `config.h` values first, or reconfigure through the Web UI before the first generic OTA update. Published generic binaries should use empty Wi-Fi and MQTT defaults rather than developer credentials.
-
-The Web UI remains available for repair and firmware upload if LoRa initialization fails. This implementation verifies the uploaded image but does not add automatic rollback after a new firmware boots; test firmware on hardware before distributing it.
-
 ## Uploading Code to CapiBridge
 
 Use USB for the first installation. If ESP1 already has OTA-capable firmware, use [How to upload via OTA](#how-to-upload-via-ota-after-the-first-upload).
@@ -204,30 +187,6 @@ Everything will be ready shortly; the CapiBridge RSSI entity should appear in th
 > [!NOTE]
 > After uploading the code, open the Configuration webpage http://YOUR-CAPIBRIDGE-IP
 > and configure the rest.
-
-
-### How to upload via OTA (after the first upload)
-
-ESP1 must already have OTA-capable CapiBridge firmware installed over USB. No USB connection is needed for subsequent OTA updates. Changing the partition scheme still requires USB.
-
-For each new release, use Arduino IDE:
-
-1. Open [ESP1.ino](code/Gateway/ESP1/ESP1.ino).
-2. Change `FIRMWARE_VERSION`, for example to `"V1.4.1"`.
-3. Select **Board → ESP32C3 Dev Module**.
-4. Select **Partition Scheme → Minimal SPIFFS (1.9MB APP with OTA/128KB SPIFFS)**.
-5. Choose **Sketch → Export Compiled Binary**.
-6. Find **`ESP1.ino.bin`** in the generated `build` folder.
-
-You can rename that file to something clear, such as **`CapiBridge-ESP1-v1.4.1.bin`**.
-
-To upload it:
-
-1. Open the CapiBridge Web UI at `http://YOUR-CAPIBRIDGE-IP` and sign in.
-2. Go to **Settings → Firmware** and select the `.bin` file.
-3. Click **Upload firmware**. Keep power connected and wait for verification, reboot, and automatic reconnection.
-
-Use the application `.bin` only—**not** `.merged.bin`, `.bootloader.bin`, `.partitions.bin`, or an ESP2 binary. Saved configuration and Web UI login remain intact. Save and apply any pending settings edits before uploading.
 
 
 #### Gateway Separation and Encryption Keys
@@ -280,6 +239,29 @@ Use the application `.bin` only—**not** `.merged.bin`, `.bootloader.bin`, `.pa
 
 ____________
 
+
+## How to upload via OTA (after the first upload)
+
+ESP1 must already have OTA-capable CapiBridge firmware installed over USB. No USB connection is needed for subsequent OTA updates. Changing the partition scheme still requires USB.
+
+For each new release, use Arduino IDE:
+
+1. Open [ESP1.ino](https://github.com/PricelessToolkit/CapiBridge/blob/dev/code/Gateway/ESP1/ESP1.ino).
+2. Change `FIRMWARE_VERSION`, for example to `"V1.4.1"`.
+3. Select **Board → ESP32C3 Dev Module**.
+4. Select **Partition Scheme → Minimal SPIFFS (1.9MB APP with OTA/128KB SPIFFS)**.
+5. Choose **Sketch → Export Compiled Binary**.
+6. Find **`ESP1.ino.bin`** in the generated `build` folder.
+
+You can rename that file to something clear, such as **`CapiBridge-ESP1-v1.4.1.bin`**.
+
+To upload it:
+
+1. Open the CapiBridge Web UI at `http://YOUR-CAPIBRIDGE-IP` and sign in.
+2. Go to **Settings → Firmware** and select the `.bin` file.
+3. Click **Upload firmware**. Keep power connected and wait for verification, reboot, and automatic reconnection.
+
+Use the application `.bin` only—**not** `.merged.bin`, `.bootloader.bin`, `.partitions.bin`, or an ESP2 binary. Saved configuration and Web UI login remain intact. Save and apply any pending settings edits before uploading.
 
 ## Home Assistant Zero Configuration
 > [!NOTE]
