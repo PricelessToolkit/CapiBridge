@@ -101,21 +101,30 @@ ____________
 > Arduino IDE 3.3.12
 
 #### Used Arduino Libraries
-```c
-#include <Arduino.h>
-#include <SPI.h>
-#include <RadioLib.h>
-#include <WiFi.h>
-#include <PubSubClient.h>
-#include <ArduinoJson.h>
-#include <esp_now.h>
-```
+
+Install these through **Library Manager**:
+
+- **RadioLib**
+- **PubSubClient**
+- **ArduinoJson**
+
+These are included with the **ESP32 board package**:
+
+- **Arduino core** (`Arduino.h`)
+- **SPI** (`SPI.h`)
+- **WiFi** (`WiFi.h`)
+- **WebServer** (`WebServer.h`)
+- **Preferences** (`Preferences.h`)
+- **Update** (`Update.h`)
+- **ESP-NOW** (`esp_now.h`)
+
+ESP-IDF support headers (`esp_wifi.h`, `esp_err.h`, `esp_ota_ops.h`, and `esp_app_format.h`) are also included with the ESP32 board package.
 
 CapiBridge is based on ESP32-C3, so if you are using ESP32 for the first time, you need to install the ESP32 board and all libraries in your Arduino IDE.
 - In your Arduino IDE, go to File> Preferences.
 - Enter `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json` into the “Additional Boards Manager URLs” field. Then, click the “OK” button
 - Open the Boards Manager. Go to Tools > Board > Boards Manager and search for ESP32 and press the install button for the “esp32 by Expressif Systems“
-- Open Library Manager, search for PubSubClient and press the install button, do the same for other libraries.
+- Open Library Manager and install **RadioLib**, **PubSubClient**, and **ArduinoJson**.
 
 ____________
 
@@ -242,25 +251,12 @@ ____________
 
 ## How to upload via OTA (after the first upload)
 
-ESP1 must already have OTA-capable CapiBridge firmware installed over USB. No USB connection is needed for subsequent OTA updates. Changing the partition scheme still requires USB.
+1. Download `CapiBridge-ESP1-vX.X.X.bin` from [GitHub Releases](https://github.com/PricelessToolkit/CapiBridge/releases).
+2. Open the CapiBridge Web UI → **Settings → Firmware**.
+3. Select the downloaded file and click **Upload firmware**.
+4. Keep power connected until the gateway restarts.
 
-For each new release, use Arduino IDE:
-
-1. Open [ESP1.ino](https://github.com/PricelessToolkit/CapiBridge/blob/dev/code/Gateway/ESP1/ESP1.ino).
-2. Select **Board → ESP32C3 Dev Module**.
-3. Select **Partition Scheme → Minimal SPIFFS (1.9MB APP with OTA/128KB SPIFFS)**.
-4. Choose **Sketch → Export Compiled Binary**.
-5. Find **`ESP1.ino.bin`** in the generated `build` folder.
-
-You can rename that file to something clear, such as **`CapiBridge-ESP1-v1.4.1.bin`**.
-
-To upload it:
-
-1. Open the CapiBridge Web UI at `http://YOUR-CAPIBRIDGE-IP` and sign in.
-2. Go to **Settings → Firmware** and select the `.bin` file.
-3. Click **Upload firmware**. Keep power connected and wait for verification, reboot, and automatic reconnection.
-
-Use the application `.bin` only—**not** `.merged.bin`, `.bootloader.bin`, `.partitions.bin`, or an ESP2 binary. Saved configuration and Web UI login remain intact. Save and apply any pending settings edits before uploading.
+**Requires an initial USB installation of OTA-capable firmware. Saved settings and login are preserved.**
 
 ## Home Assistant Zero Configuration
 > [!NOTE]
